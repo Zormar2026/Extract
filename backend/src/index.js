@@ -16,24 +16,26 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'extract',
-    version: '2.0.0',
-    features: ['content-type-detection', 'ad-intelligence', 'mm-pipeline', 'library'],
+    version: '3.0.0',
+    features: ['deep-extraction', 'content-type-detection', 'ad-intelligence', 'auto-ad-adapt', 'mm-pipeline', 'library', 'cache', 'quality-retry'],
     timestamp: new Date().toISOString()
   });
 });
 
-// Main extraction endpoint (upgraded)
+// Main extraction endpoint
 app.post('/extract', async (req, res) => {
-  const { url, type } = req.body;
+  const { url, type, depth } = req.body;
 
   if (!url) {
     return res.status(400).json({ error: 'URL is required' });
   }
 
+  const extractionDepth = depth || 'deep'; // quick | standard | deep
+
   try {
-    console.log(`[Extract] Processing: ${url} (type: ${type || 'auto'})`);
-    const result = await extractFromUrl(url, type || 'auto');
-    console.log(`[Extract] Complete: ${url} → ${result.intelligence?.contentType || 'unknown'}`);
+    console.log(`[Extract] Processing: ${url} (type: ${type || 'auto'}, depth: ${extractionDepth})`);
+    const result = await extractFromUrl(url, type || 'auto', extractionDepth);
+    console.log(`[Extract] Complete: ${url} → ${result.intelligence?.contentType || 'unknown'} (quality: ${result.intelligence?._qualityScore}/10)`);
     res.json(result);
   } catch (err) {
     console.error(`[Extract] Error: ${err.message}`);
@@ -41,13 +43,10 @@ app.post('/extract', async (req, res) => {
   }
 });
 
-// Content automation pipeline endpoint
+// Content automation pipeline
 app.post('/automate', async (req, res) => {
   const { url, type } = req.body;
-
-  if (!url) {
-    return res.status(400).json({ error: 'URL is required' });
-  }
+  if (!url) return res.status(400).json({ error: 'URL is required' });
 
   try {
     console.log(`[Automate] Starting pipeline: ${url}`);
@@ -60,18 +59,14 @@ app.post('/automate', async (req, res) => {
   }
 });
 
-// Ad adaptation endpoint
+// Ad adaptation
 app.post('/adapt-ad', async (req, res) => {
   const { extraction, productName } = req.body;
-
-  if (!extraction || !productName) {
-    return res.status(400).json({ error: 'extraction and productName are required' });
-  }
+  if (!extraction || !productName) return res.status(400).json({ error: 'extraction and productName are required' });
 
   try {
     console.log(`[AdAdapt] Adapting for: ${productName}`);
     const result = await adaptAdForProduct(extraction, productName);
-    console.log(`[AdAdapt] Complete: ${productName}`);
     res.json(result);
   } catch (err) {
     console.error(`[AdAdapt] Error: ${err.message}`);
@@ -79,13 +74,10 @@ app.post('/adapt-ad', async (req, res) => {
   }
 });
 
-// Generate MM script from existing intelligence
+// MM script generation
 app.post('/mm-script', async (req, res) => {
   const { intelligence } = req.body;
-
-  if (!intelligence) {
-    return res.status(400).json({ error: 'intelligence data is required' });
-  }
+  if (!intelligence) return res.status(400).json({ error: 'intelligence data is required' });
 
   try {
     const script = await generateMentorMillionaireScript(intelligence);
@@ -96,7 +88,7 @@ app.post('/mm-script', async (req, res) => {
   }
 });
 
-// Library endpoints
+// Library CRUD
 app.get('/library', (req, res) => {
   const { contentType, status } = req.query;
   const items = library.getAll({ contentType, status });
@@ -112,7 +104,6 @@ app.get('/library/:id', (req, res) => {
 app.post('/library', (req, res) => {
   const { extraction } = req.body;
   if (!extraction) return res.status(400).json({ error: 'extraction data is required' });
-
   const entry = library.save(extraction);
   console.log(`[Library] Saved: ${entry.id} (${entry.contentType})`);
   res.json({ success: true, entry });
@@ -132,5 +123,5 @@ app.delete('/library/:id', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`[Extract] v2.0 running on port ${PORT}`);
+  console.log(`[Extract] v3.0 Deep Intelligence Engine running on port ${PORT}`);
 });

@@ -7,232 +7,293 @@ import { TypeSpecificView } from './TypeSpecificView';
 import { ActionButtons } from './ActionButtons';
 import { MentorMillionaireView } from './MentorMillionaireView';
 import { AdAdaptationView } from './AdAdaptationView';
+import { ExpandableSection, CopyButton } from './ExpandableSection';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 
-function FadeInSection({ children, delay = 0, style }) {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(20)).current;
-
+function FadeIn({ children, delay = 0, style }) {
+  const fade = useRef(new Animated.Value(0)).current;
+  const slide = useRef(new Animated.Value(16)).current;
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 500, delay, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 500, delay, useNativeDriver: true }),
+      Animated.timing(fade, { toValue: 1, duration: 400, delay, useNativeDriver: true }),
+      Animated.timing(slide, { toValue: 0, duration: 400, delay, useNativeDriver: true }),
     ]).start();
   }, []);
-
-  return (
-    <Animated.View style={[style, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      {children}
-    </Animated.View>
-  );
+  return <Animated.View style={[style, { opacity: fade, transform: [{ translateY: slide }] }]}>{children}</Animated.View>;
 }
 
-function SectionHeader({ icon, title, delay }) {
+function ScoreBadge({ score, label, color }) {
+  if (score == null) return null;
+  const c = color || (score >= 8 ? colors.success : score >= 5 ? colors.warning : colors.error);
   return (
-    <FadeInSection delay={delay}>
-      <View style={styles.sectionHeader}>
-        <Ionicons name={icon} size={14} color={colors.goldPrimary} />
-        <Text style={styles.sectionTitle}>{title}</Text>
-        <View style={styles.sectionLine} />
-      </View>
-    </FadeInSection>
-  );
-}
-
-function TagPill({ text, delay }) {
-  return (
-    <FadeInSection delay={delay}>
-      <View style={styles.tag}>
-        <Text style={styles.tagText}>{text}</Text>
-      </View>
-    </FadeInSection>
+    <View style={[s.scoreBadge, { borderColor: c + '40' }]}>
+      <Text style={[s.scoreNum, { color: c }]}>{score}</Text>
+      <Text style={s.scoreSlash}>/10</Text>
+      {label && <Text style={s.scoreLabel}>{label}</Text>}
+    </View>
   );
 }
 
 export function IntelligenceView({ data, source, result }) {
   const [adaptResult, setAdaptResult] = useState(null);
-
   if (!data) return null;
-
-  // Show ad adaptation view if we have one
-  if (adaptResult) {
-    return <AdAdaptationView adaptation={adaptResult} onClose={() => setAdaptResult(null)} />;
-  }
+  if (adaptResult) return <AdAdaptationView adaptation={adaptResult} onClose={() => setAdaptResult(null)} />;
 
   const intel = data.raw ? null : data;
-  const contentType = intel?.contentType || 'unknown';
+  const ct = intel?.contentType || 'unknown';
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Content Type Badge + Source Info */}
+    <ScrollView style={s.container} showsVerticalScrollIndicator={false}>
+      {/* Source + Badge */}
       {source && (
-        <FadeInSection delay={0}>
-          <GlassCard style={styles.card}>
-            <View style={styles.badgeRow}>
-              <ContentTypeBadge contentType={contentType} />
+        <FadeIn>
+          <GlassCard style={s.card}>
+            <View style={s.badgeRow}>
+              <ContentTypeBadge contentType={ct} />
+              {intel?._qualityScore && <ScoreBadge score={intel._qualityScore} label="QUALITY" />}
             </View>
-            <View style={styles.sourceRow}>
+            <View style={s.sourceRow}>
               <Ionicons name="videocam" size={16} color={colors.goldPrimary} />
-              <Text style={styles.sourceTitle} numberOfLines={2}>
-                {source.title || 'Unknown'}
-              </Text>
+              <Text style={s.sourceTitle} numberOfLines={2}>{source.title || 'Unknown'}</Text>
             </View>
-            <View style={styles.metaRow}>
-              {source.author && <Text style={styles.metaText}>{source.author}</Text>}
-              {source.duration && <Text style={styles.metaText}>{source.duration}</Text>}
-              {source.views && <Text style={styles.metaText}>{source.views} views</Text>}
+            <View style={s.metaRow}>
+              {source.author && <Text style={s.metaText}>{source.author}</Text>}
+              {source.duration && <Text style={s.metaText}>{source.duration}</Text>}
+              {source.views && <Text style={s.metaText}>{source.views} views</Text>}
+              {result?.fromCache && <Text style={[s.metaText, { color: colors.goldDim }]}>CACHED</Text>}
             </View>
           </GlassCard>
-        </FadeInSection>
+        </FadeIn>
       )}
 
-      {/* Action Buttons */}
+      {/* Actions */}
       {intel && result && (
-        <FadeInSection delay={50}>
-          <ActionButtons
-            result={result}
-            contentType={contentType}
-            onAdaptResult={setAdaptResult}
-          />
-        </FadeInSection>
+        <FadeIn delay={30}>
+          <ActionButtons result={result} contentType={ct} onAdaptResult={setAdaptResult} />
+        </FadeIn>
+      )}
+
+      {/* Scores Strip */}
+      {intel && (intel.viralPotential || intel.speakerAnalysis) && (
+        <FadeIn delay={50}>
+          <GlassCard style={s.card}>
+            <View style={s.scoresStrip}>
+              {intel.viralPotential?.score && <ScoreBadge score={intel.viralPotential.score} label="VIRAL" color="#EA80FC" />}
+              {intel.speakerAnalysis?.credibilityScore && <ScoreBadge score={intel.speakerAnalysis.credibilityScore} label="CREDIBILITY" color="#6DD5FA" />}
+            </View>
+            {intel.viralPotential?.explanation && <Text style={s.scoreExpl}>{intel.viralPotential.explanation}</Text>}
+          </GlassCard>
+        </FadeIn>
       )}
 
       {/* Summary */}
       {intel?.summary && (
-        <FadeInSection delay={100}>
-          <GlassCard style={styles.card} glowIntensity={0.15}>
-            <SectionHeader icon="flash" title="Summary" delay={150} />
-            <Text style={styles.summaryText}>{intel.summary}</Text>
+        <FadeIn delay={80}>
+          <GlassCard style={s.card} glowIntensity={0.12}>
+            <ExpandableSection title="SUMMARY" icon="flash" copyText={intel.summary}>
+              <Text style={s.summaryText}>{intel.summary}</Text>
+            </ExpandableSection>
           </GlassCard>
-        </FadeInSection>
+        </FadeIn>
       )}
 
-      {/* Type-Specific Intelligence */}
+      {/* Speaker & Format Analysis */}
+      {(intel?.speakerAnalysis || intel?.contentFormatBreakdown) && (
+        <FadeIn delay={100}>
+          <GlassCard style={s.card}>
+            {intel.speakerAnalysis && (
+              <ExpandableSection title="SPEAKER ANALYSIS" icon="person" iconColor="#6DD5FA" defaultExpanded={false}>
+                <View style={s.kvRow}><Text style={s.kvLabel}>TONE</Text><Text style={s.kvValue}>{intel.speakerAnalysis.tone}</Text></View>
+                <View style={s.kvRow}><Text style={s.kvLabel}>DELIVERY</Text><Text style={s.kvValue}>{intel.speakerAnalysis.deliveryStyle}</Text></View>
+                {intel.speakerAnalysis.credibilityReason && (
+                  <View style={s.kvRow}><Text style={s.kvLabel}>CREDIBILITY</Text><Text style={s.kvValue}>{intel.speakerAnalysis.credibilityReason}</Text></View>
+                )}
+              </ExpandableSection>
+            )}
+            {intel.contentFormatBreakdown && (
+              <ExpandableSection title="CONTENT FORMAT" icon="film" iconColor="#B388FF" defaultExpanded={false}>
+                <View style={s.kvRow}><Text style={s.kvLabel}>HOOK</Text><Text style={s.kvValue}>{intel.contentFormatBreakdown.hookLength} — {intel.contentFormatBreakdown.hookType}</Text></View>
+                <View style={s.kvRow}><Text style={s.kvLabel}>BODY</Text><Text style={s.kvValue}>{intel.contentFormatBreakdown.bodyStructure}</Text></View>
+                <View style={s.kvRow}><Text style={s.kvLabel}>ENDING</Text><Text style={s.kvValue}>{intel.contentFormatBreakdown.endingType}</Text></View>
+                <View style={s.kvRow}><Text style={s.kvLabel}>PACING</Text><Text style={s.kvValue}>{intel.contentFormatBreakdown.totalPacing}</Text></View>
+              </ExpandableSection>
+            )}
+          </GlassCard>
+        </FadeIn>
+      )}
+
+      {/* Emotional Triggers */}
+      {intel?.emotionalTriggers?.length > 0 && (
+        <FadeIn delay={120}>
+          <GlassCard style={s.card}>
+            <ExpandableSection title="EMOTIONAL TRIGGERS" icon="heart" iconColor="#FF4081" defaultExpanded={false}>
+              <View style={s.tagsWrap}>
+                {intel.emotionalTriggers.map((t, i) => (
+                  <View key={i} style={[s.tag, { backgroundColor: '#FF408115', borderColor: '#FF408130' }]}>
+                    <Text style={[s.tagText, { color: '#FF4081' }]}>{t}</Text>
+                  </View>
+                ))}
+              </View>
+            </ExpandableSection>
+          </GlassCard>
+        </FadeIn>
+      )}
+
+      {/* Type-Specific */}
       {intel?.typeSpecific && (
-        <FadeInSection delay={180}>
-          <TypeSpecificView contentType={contentType} data={intel.typeSpecific} />
-        </FadeInSection>
+        <FadeIn delay={140}>
+          <TypeSpecificView contentType={ct} data={intel.typeSpecific} />
+        </FadeIn>
       )}
 
       {/* Key Topics */}
       {intel?.keyTopics?.length > 0 && (
-        <FadeInSection delay={200}>
-          <GlassCard style={styles.card}>
-            <SectionHeader icon="pricetags" title="Key Topics" delay={250} />
-            <View style={styles.tagsWrap}>
-              {intel.keyTopics.map((topic, i) => (
-                <TagPill key={i} text={topic} delay={280 + i * 50} />
-              ))}
-            </View>
+        <FadeIn delay={160}>
+          <GlassCard style={s.card}>
+            <ExpandableSection title="KEY TOPICS" icon="pricetags">
+              <View style={s.tagsWrap}>
+                {intel.keyTopics.map((t, i) => (
+                  <View key={i} style={s.tag}><Text style={s.tagText}>{t}</Text></View>
+                ))}
+              </View>
+            </ExpandableSection>
           </GlassCard>
-        </FadeInSection>
+        </FadeIn>
       )}
 
       {/* Key Insights */}
       {intel?.keyInsights?.length > 0 && (
-        <FadeInSection delay={300}>
-          <GlassCard style={styles.card}>
-            <SectionHeader icon="bulb" title="Key Insights" delay={350} />
-            {intel.keyInsights.map((insight, i) => (
-              <FadeInSection key={i} delay={380 + i * 60}>
-                <View style={styles.insightRow}>
-                  <View style={styles.insightDot} />
-                  <Text style={styles.insightText}>{insight}</Text>
+        <FadeIn delay={180}>
+          <GlassCard style={s.card}>
+            <ExpandableSection title="KEY INSIGHTS" icon="bulb" copyText={intel.keyInsights.join('\n')}>
+              {intel.keyInsights.map((ins, i) => (
+                <View key={i} style={s.insightRow}>
+                  <View style={s.insightDot} />
+                  <Text style={s.insightText}>{ins}</Text>
                 </View>
-              </FadeInSection>
-            ))}
+              ))}
+            </ExpandableSection>
           </GlassCard>
-        </FadeInSection>
+        </FadeIn>
       )}
 
       {/* Quotes */}
       {intel?.quotes?.length > 0 && (
-        <FadeInSection delay={400}>
-          <GlassCard style={styles.card}>
-            <SectionHeader icon="chatbubble-ellipses" title="Notable Quotes" delay={450} />
-            {intel.quotes.map((quote, i) => (
-              <FadeInSection key={i} delay={480 + i * 60}>
-                <View style={styles.quoteBlock}>
-                  <View style={styles.quoteLine} />
-                  <Text style={styles.quoteText}>"{quote}"</Text>
+        <FadeIn delay={200}>
+          <GlassCard style={s.card}>
+            <ExpandableSection title="QUOTES" icon="chatbubble-ellipses" copyText={intel.quotes.map(q => `"${q}"`).join('\n')}>
+              {intel.quotes.map((q, i) => (
+                <View key={i} style={s.quoteBlock}>
+                  <View style={s.quoteLine} />
+                  <Text style={s.quoteText}>"{q}"</Text>
+                  <CopyButton text={q} />
                 </View>
-              </FadeInSection>
-            ))}
+              ))}
+            </ExpandableSection>
           </GlassCard>
-        </FadeInSection>
+        </FadeIn>
       )}
 
-      {/* Metadata Strip */}
+      {/* Metadata */}
       {intel && (
-        <FadeInSection delay={500}>
-          <GlassCard style={styles.card}>
-            <View style={styles.metaGrid}>
-              {intel.sentiment && (
-                <View style={styles.metaItem}>
-                  <Text style={styles.metaLabel}>SENTIMENT</Text>
-                  <Text style={styles.metaValue}>{intel.sentiment}</Text>
-                </View>
-              )}
-              {intel.contentType && (
-                <View style={styles.metaItem}>
-                  <Text style={styles.metaLabel}>TYPE</Text>
-                  <Text style={styles.metaValue}>{intel.contentType}</Text>
-                </View>
-              )}
-              {intel.targetAudience && (
-                <View style={styles.metaItem}>
-                  <Text style={styles.metaLabel}>AUDIENCE</Text>
-                  <Text style={styles.metaValue}>{intel.targetAudience}</Text>
-                </View>
-              )}
+        <FadeIn delay={220}>
+          <GlassCard style={s.card}>
+            <View style={s.metaGrid}>
+              {intel.sentiment && <View style={s.metaItem}><Text style={s.mLabel}>SENTIMENT</Text><Text style={s.mValue}>{intel.sentiment}</Text></View>}
+              {intel.targetAudience && <View style={s.metaItem}><Text style={s.mLabel}>AUDIENCE</Text><Text style={s.mValue}>{intel.targetAudience}</Text></View>}
             </View>
           </GlassCard>
-        </FadeInSection>
+        </FadeIn>
       )}
 
-      {/* Script Hook */}
+      {/* Hook */}
       {intel?.scriptHook && (
-        <FadeInSection delay={600}>
-          <GlassCard style={styles.card} glowIntensity={0.2}>
-            <SectionHeader icon="megaphone" title="Content Hook" delay={650} />
-            <Text style={styles.hookText}>{intel.scriptHook}</Text>
+        <FadeIn delay={240}>
+          <GlassCard style={s.card} glowIntensity={0.15}>
+            <ExpandableSection title="CONTENT HOOK" icon="megaphone" copyText={intel.scriptHook}>
+              <Text style={s.hookText}>{intel.scriptHook}</Text>
+            </ExpandableSection>
           </GlassCard>
-        </FadeInSection>
+        </FadeIn>
       )}
 
-      {/* Mentor Millionaire Script (auto-generated for business/trading) */}
+      {/* MM Script */}
       {result?.mentorMillionaire && (
-        <FadeInSection delay={700}>
+        <FadeIn delay={260}>
           <MentorMillionaireView data={result.mentorMillionaire} />
-        </FadeInSection>
+        </FadeIn>
       )}
 
       {/* Action Items */}
       {intel?.actionItems?.length > 0 && (
-        <FadeInSection delay={750}>
-          <GlassCard style={styles.card}>
-            <SectionHeader icon="rocket" title="Action Items" delay={780} />
-            {intel.actionItems.map((item, i) => (
-              <FadeInSection key={i} delay={800 + i * 50}>
-                <View style={styles.actionRow}>
-                  <Text style={styles.actionNumber}>{String(i + 1).padStart(2, '0')}</Text>
-                  <Text style={styles.actionText}>{item}</Text>
+        <FadeIn delay={280}>
+          <GlassCard style={s.card}>
+            <ExpandableSection title="ACTION ITEMS" icon="rocket" copyText={intel.actionItems.join('\n')}>
+              {intel.actionItems.map((item, i) => (
+                <View key={i} style={s.actionRow}>
+                  <Text style={s.actionNum}>{String(i + 1).padStart(2, '0')}</Text>
+                  <Text style={s.actionText}>{item}</Text>
                 </View>
-              </FadeInSection>
-            ))}
+              ))}
+            </ExpandableSection>
           </GlassCard>
-        </FadeInSection>
+        </FadeIn>
+      )}
+
+      {/* Transcript */}
+      {intel?.transcript && intel.transcript.length > 20 && !intel.transcript.startsWith('[') && (
+        <FadeIn delay={300}>
+          <GlassCard style={s.card}>
+            <ExpandableSection title="FULL TRANSCRIPT" icon="document-text" iconColor={colors.textSecondary} defaultExpanded={false} copyText={intel.transcript}>
+              <Text style={s.transcriptText}>{intel.transcript}</Text>
+            </ExpandableSection>
+          </GlassCard>
+        </FadeIn>
+      )}
+
+      {/* Monetization */}
+      {intel?.monetizationAngles?.length > 0 && (
+        <FadeIn delay={320}>
+          <GlassCard style={s.card}>
+            <ExpandableSection title="MONETIZATION ANGLES" icon="cash" iconColor={colors.success} defaultExpanded={false}>
+              {intel.monetizationAngles.map((a, i) => (
+                <View key={i} style={s.insightRow}>
+                  <View style={[s.insightDot, { backgroundColor: colors.success }]} />
+                  <Text style={s.insightText}>{a}</Text>
+                </View>
+              ))}
+            </ExpandableSection>
+          </GlassCard>
+        </FadeIn>
+      )}
+
+      {/* Ad Adaptations (auto-generated for ads) */}
+      {result?.adAdaptations && (
+        <FadeIn delay={340}>
+          <GlassCard style={s.card} glowIntensity={0.1}>
+            <ExpandableSection title="AUTO-ADAPTED ADS" icon="color-wand" iconColor="#FF4081" defaultExpanded={false}>
+              {Object.entries(result.adAdaptations).map(([product, adapt]) => (
+                <View key={product} style={s.adaptBlock}>
+                  <Text style={s.adaptProduct}>{product}</Text>
+                  <Text style={s.adaptHook}>"{adapt?.hook || adapt?.fullScript?.substring(0, 100) || ''}"</Text>
+                  {adapt?.fullScript && <CopyButton text={adapt.fullScript} label="COPY SCRIPT" />}
+                </View>
+              ))}
+            </ExpandableSection>
+          </GlassCard>
+        </FadeIn>
       )}
 
       {/* Raw fallback */}
       {data.raw && (
-        <FadeInSection delay={100}>
-          <GlassCard style={styles.card}>
-            <SectionHeader icon="document-text" title="Analysis" delay={150} />
-            <Text style={styles.rawText}>{data.raw}</Text>
+        <FadeIn>
+          <GlassCard style={s.card}>
+            <ExpandableSection title="ANALYSIS" icon="document-text">
+              <Text style={s.rawText}>{data.raw}</Text>
+            </ExpandableSection>
           </GlassCard>
-        </FadeInSection>
+        </FadeIn>
       )}
 
       <View style={{ height: 40 }} />
@@ -240,34 +301,44 @@ export function IntelligenceView({ data, source, result }) {
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   container: { flex: 1 },
-  card: { marginBottom: 14 },
-  badgeRow: { marginBottom: 12 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 14, gap: 8 },
-  sectionTitle: { ...typography.label, color: colors.goldPrimary },
-  sectionLine: { flex: 1, height: 1, backgroundColor: colors.border, marginLeft: 8 },
+  card: { marginBottom: 12 },
+  badgeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   sourceRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
   sourceTitle: { ...typography.heading, color: colors.textPrimary, fontSize: 17, flex: 1 },
-  metaRow: { flexDirection: 'row', gap: 16, flexWrap: 'wrap' },
+  metaRow: { flexDirection: 'row', gap: 14, flexWrap: 'wrap' },
   metaText: { ...typography.caption, color: colors.textTertiary },
+  scoresStrip: { flexDirection: 'row', justifyContent: 'center', gap: 20, marginBottom: 8 },
+  scoreBadge: { alignItems: 'center', borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8, minWidth: 70 },
+  scoreNum: { fontSize: 20, fontWeight: '700' },
+  scoreSlash: { ...typography.caption, color: colors.textTertiary, fontSize: 9 },
+  scoreLabel: { ...typography.label, color: colors.textTertiary, fontSize: 8, marginTop: 2 },
+  scoreExpl: { ...typography.body, color: colors.textSecondary, fontSize: 12, textAlign: 'center', marginTop: 4 },
   summaryText: { ...typography.body, color: colors.textPrimary, lineHeight: 24 },
+  kvRow: { flexDirection: 'row', marginBottom: 8, gap: 8 },
+  kvLabel: { ...typography.label, color: colors.textTertiary, fontSize: 9, width: 80, marginTop: 2 },
+  kvValue: { ...typography.body, color: colors.textPrimary, flex: 1, fontSize: 13, lineHeight: 18 },
   tagsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tag: { backgroundColor: colors.goldSubtle, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: 'rgba(200, 168, 78, 0.15)' },
   tagText: { ...typography.caption, color: colors.goldLight, fontSize: 11 },
-  insightRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 10 },
-  insightDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.goldPrimary, marginTop: 8 },
-  insightText: { ...typography.body, color: colors.textPrimary, flex: 1 },
-  quoteBlock: { flexDirection: 'row', marginBottom: 12, gap: 12 },
-  quoteLine: { width: 2, backgroundColor: colors.goldDim, borderRadius: 1 },
-  quoteText: { ...typography.body, color: colors.textSecondary, fontStyle: 'italic', flex: 1, lineHeight: 22 },
+  insightRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8 },
+  insightDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.goldPrimary, marginTop: 7 },
+  insightText: { ...typography.body, color: colors.textPrimary, flex: 1, fontSize: 14, lineHeight: 20 },
+  quoteBlock: { flexDirection: 'row', marginBottom: 10, gap: 10, alignItems: 'flex-start' },
+  quoteLine: { width: 2, backgroundColor: colors.goldDim, borderRadius: 1, alignSelf: 'stretch' },
+  quoteText: { ...typography.body, color: colors.textSecondary, fontStyle: 'italic', flex: 1, lineHeight: 20 },
   metaGrid: { flexDirection: 'row', justifyContent: 'space-around' },
-  metaItem: { alignItems: 'center', gap: 6 },
-  metaLabel: { ...typography.label, color: colors.textTertiary, fontSize: 9 },
-  metaValue: { ...typography.body, color: colors.goldLight, fontSize: 13, textTransform: 'capitalize' },
+  metaItem: { alignItems: 'center', gap: 4, flex: 1 },
+  mLabel: { ...typography.label, color: colors.textTertiary, fontSize: 9 },
+  mValue: { ...typography.body, color: colors.goldLight, fontSize: 12, textAlign: 'center', textTransform: 'capitalize' },
   hookText: { ...typography.body, color: colors.goldBright, fontSize: 16, fontWeight: '500', lineHeight: 24, fontStyle: 'italic' },
-  actionRow: { flexDirection: 'row', gap: 12, marginBottom: 10, alignItems: 'flex-start' },
-  actionNumber: { ...typography.mono, color: colors.goldDim, fontSize: 12, marginTop: 2 },
-  actionText: { ...typography.body, color: colors.textPrimary, flex: 1 },
+  actionRow: { flexDirection: 'row', gap: 10, marginBottom: 8, alignItems: 'flex-start' },
+  actionNum: { ...typography.mono, color: colors.goldDim, fontSize: 11, marginTop: 2 },
+  actionText: { ...typography.body, color: colors.textPrimary, flex: 1, fontSize: 14, lineHeight: 20 },
+  transcriptText: { ...typography.body, color: colors.textSecondary, fontSize: 13, lineHeight: 22 },
   rawText: { ...typography.body, color: colors.textSecondary, lineHeight: 22 },
+  adaptBlock: { marginBottom: 14, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
+  adaptProduct: { ...typography.subheading, color: '#FF4081', fontSize: 13, marginBottom: 4 },
+  adaptHook: { ...typography.body, color: colors.textPrimary, fontStyle: 'italic', fontSize: 13, lineHeight: 18, marginBottom: 4 },
 });

@@ -5,11 +5,11 @@ export async function healthCheck() {
   return res.json();
 }
 
-export async function extractUrl(url, type = 'auto') {
+export async function extractUrl(url, type = 'auto', depth = 'deep') {
   const res = await fetch(`${API_BASE}/extract`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url, type }),
+    body: JSON.stringify({ url, type, depth }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Server error' }));

@@ -1,14 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  SafeAreaView,
-  Animated,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
+  View, Text, TextInput, StyleSheet, SafeAreaView,
+  Animated, KeyboardAvoidingView, Platform, Alert, TouchableOpacity, Share,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,92 +15,101 @@ import { extractUrl } from '../api/client';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 
+const DEPTH_OPTIONS = [
+  { key: 'quick', label: 'QUICK', time: '~10s', icon: 'flash-outline' },
+  { key: 'standard', label: 'STANDARD', time: '~20s', icon: 'flash' },
+  { key: 'deep', label: 'DEEP', time: '~45s', icon: 'nuclear' },
+];
+
+const PROGRESS_STEPS = [
+  'Connecting to source...',
+  'Downloading video metadata...',
+  'Extracting transcript...',
+  'Detecting content type...',
+  'Analyzing speaker & delivery...',
+  'Extracting deep intelligence...',
+  'Scoring quality...',
+  'Generating type-specific data...',
+  'Finalizing report...',
+];
+
 export default function HomeScreen() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [status, setStatus] = useState('');
+  const [depth, setDepth] = useState('deep');
+  const [progressIdx, setProgressIdx] = useState(0);
 
   const titleFade = useRef(new Animated.Value(0)).current;
   const contentFade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.stagger(200, [
-      Animated.timing(titleFade, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.timing(contentFade, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
+      Animated.timing(titleFade, { toValue: 1, duration: 800, useNativeDriver: true }),
+      Animated.timing(contentFade, { toValue: 1, duration: 600, useNativeDriver: true }),
     ]).start();
   }, []);
+
+  useEffect(() => {
+    if (!loading) return;
+    setProgressIdx(0);
+    const interval = setInterval(() => {
+      setProgressIdx(prev => {
+        if (prev < PROGRESS_STEPS.length - 1) {
+          setStatus(PROGRESS_STEPS[prev + 1]);
+          return prev + 1;
+        }
+        return prev;
+      });
+    }, depth === 'quick' ? 1200 : depth === 'standard' ? 2500 : 4500);
+    return () => clearInterval(interval);
+  }, [loading, depth]);
 
   const handleExtract = async () => {
     if (!url.trim()) {
       Alert.alert('URL Required', 'Paste a video URL to extract intelligence.');
       return;
     }
-
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     setLoading(true);
     setError(null);
     setResult(null);
-    setStatus('Connecting...');
+    setStatus(PROGRESS_STEPS[0]);
 
     try {
-      setStatus('Extracting intelligence...');
-      const data = await extractUrl(url.trim());
-
-      if (Platform.OS !== 'web') {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
-
+      const data = await extractUrl(url.trim(), 'auto', depth);
+      if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setResult(data);
       setStatus('');
     } catch (err) {
       setError(err.message);
       setStatus('');
-      if (Platform.OS !== 'web') {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      }
+      if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleClear = () => {
-    setUrl('');
-    setResult(null);
-    setError(null);
-    setStatus('');
+  const handleClear = () => { setUrl(''); setResult(null); setError(null); setStatus(''); };
+
+  const handleShare = async () => {
+    if (!result) return;
+    const intel = result.intelligence;
+    const text = `EXTRACT Intelligence Report\n\nType: ${intel.contentType}\n\n${intel.summary}\n\nKey Insights:\n${(intel.keyInsights || []).map((i, idx) => `${idx + 1}. ${i}`).join('\n')}\n\nHook: ${intel.scriptHook || ''}`;
+    try { await Share.share({ message: text }); } catch (e) {}
   };
 
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-
-      {/* Background gradient */}
-      <LinearGradient
-        colors={['#0A0A0F', '#0D0D14', '#0A0A0F']}
-        style={StyleSheet.absoluteFillObject}
-      />
-
-      {/* Ambient gold glow */}
+      <LinearGradient colors={['#0A0A0F', '#0D0D14', '#0A0A0F']} style={StyleSheet.absoluteFillObject} />
       <View style={styles.ambientGlow} />
 
       <SafeAreaView style={styles.safe}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.flex}
-        >
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
           {/* Header */}
           <Animated.View style={[styles.header, { opacity: titleFade }]}>
             <View style={styles.logoRow}>
@@ -116,7 +118,7 @@ export default function HomeScreen() {
               </View>
               <View>
                 <Text style={styles.title}>EXTRACT</Text>
-                <Text style={styles.subtitle}>Video Intelligence Platform</Text>
+                <Text style={styles.subtitle}>Deep Intelligence Engine</Text>
               </View>
             </View>
             <View style={styles.divider} />
@@ -126,7 +128,7 @@ export default function HomeScreen() {
           <Animated.View style={[styles.content, { opacity: contentFade }]}>
             {!result ? (
               <>
-                {/* Input Area */}
+                {/* Input */}
                 <GlassCard style={styles.inputCard} glowIntensity={loading ? 0.3 : 0}>
                   <Text style={styles.inputLabel}>VIDEO URL</Text>
                   <View style={styles.inputRow}>
@@ -137,21 +139,46 @@ export default function HomeScreen() {
                       onChangeText={setUrl}
                       placeholder="Paste YouTube, TikTok, or Instagram URL"
                       placeholderTextColor={colors.textTertiary}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      keyboardType="url"
-                      editable={!loading}
-                      selectionColor={colors.goldPrimary}
+                      autoCapitalize="none" autoCorrect={false} keyboardType="url"
+                      editable={!loading} selectionColor={colors.goldPrimary}
                     />
                   </View>
                 </GlassCard>
 
-                {/* Processing State */}
+                {/* Depth Selector */}
+                {!loading && (
+                  <View style={styles.depthRow}>
+                    <Text style={styles.depthLabel}>EXTRACTION DEPTH</Text>
+                    <View style={styles.depthOptions}>
+                      {DEPTH_OPTIONS.map((opt) => (
+                        <TouchableOpacity
+                          key={opt.key}
+                          style={[styles.depthBtn, depth === opt.key && styles.depthBtnActive]}
+                          onPress={() => setDepth(opt.key)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name={opt.icon} size={14} color={depth === opt.key ? colors.goldPrimary : colors.textTertiary} />
+                          <Text style={[styles.depthBtnText, depth === opt.key && styles.depthBtnTextActive]}>{opt.label}</Text>
+                          <Text style={styles.depthTime}>{opt.time}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* Processing */}
                 {loading && (
                   <View style={styles.processingContainer}>
                     <PulsingOrb size={100} active={true} />
                     <Text style={styles.statusText}>{status}</Text>
-                    <Text style={styles.statusHint}>This may take 15-30 seconds</Text>
+
+                    {/* Progress bar */}
+                    <View style={styles.progressBar}>
+                      <View style={[styles.progressFill, { width: `${((progressIdx + 1) / PROGRESS_STEPS.length) * 100}%` }]} />
+                    </View>
+                    <Text style={styles.progressText}>
+                      Step {progressIdx + 1} of {PROGRESS_STEPS.length}
+                    </Text>
                   </View>
                 )}
 
@@ -169,7 +196,7 @@ export default function HomeScreen() {
                 {!loading && (
                   <View style={styles.buttonArea}>
                     <GoldButton
-                      title="EXTRACT INTELLIGENCE"
+                      title={`EXTRACT — ${depth.toUpperCase()}`}
                       onPress={handleExtract}
                       loading={loading}
                       disabled={!url.trim()}
@@ -178,7 +205,7 @@ export default function HomeScreen() {
                   </View>
                 )}
 
-                {/* Supported Platforms */}
+                {/* Supported */}
                 {!loading && (
                   <View style={styles.platforms}>
                     <Text style={styles.platformsLabel}>SUPPORTED</Text>
@@ -193,21 +220,25 @@ export default function HomeScreen() {
               </>
             ) : (
               <>
-                {/* Results View */}
+                {/* Results */}
                 <View style={styles.resultsHeader}>
-                  <Text style={styles.resultsTitle}>INTELLIGENCE REPORT</Text>
-                  <GoldButton
-                    title="NEW"
-                    variant="ghost"
-                    onPress={handleClear}
-                    icon={<Ionicons name="add" size={16} color={colors.goldPrimary} />}
-                  />
+                  <View style={styles.resultsLeft}>
+                    <Text style={styles.resultsTitle}>INTELLIGENCE REPORT</Text>
+                    {result.intelligence?._qualityScore && (
+                      <View style={styles.qualityBadge}>
+                        <Text style={styles.qualityText}>Q{result.intelligence._qualityScore}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.resultsActions}>
+                    <TouchableOpacity onPress={handleShare} style={styles.shareBtn}>
+                      <Ionicons name="share-outline" size={18} color={colors.goldDim} />
+                    </TouchableOpacity>
+                    <GoldButton title="NEW" variant="ghost" onPress={handleClear}
+                      icon={<Ionicons name="add" size={16} color={colors.goldPrimary} />} />
+                  </View>
                 </View>
-                <IntelligenceView
-                  data={result.intelligence}
-                  source={result.source}
-                  result={result}
-                />
+                <IntelligenceView data={result.intelligence} source={result.source} result={result} />
               </>
             )}
           </Animated.View>
@@ -218,145 +249,47 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.bg,
-  },
-  flex: {
-    flex: 1,
-  },
-  safe: {
-    flex: 1,
-  },
-  ambientGlow: {
-    position: 'absolute',
-    top: -100,
-    right: -50,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: 'rgba(200, 168, 78, 0.04)',
-  },
-  header: {
-    paddingHorizontal: 24,
-    paddingTop: Platform.OS === 'android' ? 48 : 16,
-    paddingBottom: 12,
-  },
-  logoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  logoMark: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: colors.goldSubtle,
-    borderWidth: 1,
-    borderColor: 'rgba(200, 168, 78, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    ...typography.hero,
-    color: colors.textPrimary,
-    fontSize: 24,
-    letterSpacing: 6,
-  },
-  subtitle: {
-    ...typography.caption,
-    color: colors.textTertiary,
-    fontSize: 10,
-    marginTop: 2,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginTop: 16,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-  inputCard: {
-    marginBottom: 24,
-  },
-  inputLabel: {
-    ...typography.label,
-    color: colors.goldDim,
-    marginBottom: 12,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  inputIcon: {
-    marginRight: 12,
-  },
-  input: {
-    flex: 1,
-    ...typography.body,
-    color: colors.textPrimary,
-    fontSize: 15,
-    padding: 0,
-  },
-  processingContainer: {
-    alignItems: 'center',
-    paddingVertical: 40,
-    gap: 16,
-  },
-  statusText: {
-    ...typography.subheading,
-    color: colors.goldPrimary,
-    fontSize: 13,
-    marginTop: 8,
-  },
-  statusHint: {
-    ...typography.caption,
-    color: colors.textTertiary,
-    fontSize: 10,
-  },
-  errorCard: {
-    marginBottom: 16,
-    borderColor: 'rgba(248, 113, 113, 0.2)',
-  },
-  errorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  errorText: {
-    ...typography.body,
-    color: colors.error,
-    flex: 1,
-    fontSize: 13,
-  },
-  buttonArea: {
-    marginBottom: 32,
-  },
-  platforms: {
-    alignItems: 'center',
-    gap: 10,
-  },
-  platformsLabel: {
-    ...typography.label,
-    color: colors.textTertiary,
-    fontSize: 9,
-  },
-  platformIcons: {
-    flexDirection: 'row',
-    gap: 20,
-  },
-  resultsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  resultsTitle: {
-    ...typography.label,
-    color: colors.goldPrimary,
-    fontSize: 13,
-  },
+  container: { flex: 1, backgroundColor: colors.bg },
+  flex: { flex: 1 },
+  safe: { flex: 1 },
+  ambientGlow: { position: 'absolute', top: -100, right: -50, width: 300, height: 300, borderRadius: 150, backgroundColor: 'rgba(200, 168, 78, 0.04)' },
+  header: { paddingHorizontal: 24, paddingTop: Platform.OS === 'android' ? 48 : 16, paddingBottom: 12 },
+  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  logoMark: { width: 40, height: 40, borderRadius: 10, backgroundColor: colors.goldSubtle, borderWidth: 1, borderColor: 'rgba(200, 168, 78, 0.2)', alignItems: 'center', justifyContent: 'center' },
+  title: { ...typography.hero, color: colors.textPrimary, fontSize: 24, letterSpacing: 6 },
+  subtitle: { ...typography.caption, color: colors.textTertiary, fontSize: 10, marginTop: 2 },
+  divider: { height: 1, backgroundColor: colors.border, marginTop: 16 },
+  content: { flex: 1, paddingHorizontal: 20, paddingTop: 20 },
+  inputCard: { marginBottom: 16 },
+  inputLabel: { ...typography.label, color: colors.goldDim, marginBottom: 12 },
+  inputRow: { flexDirection: 'row', alignItems: 'center' },
+  inputIcon: { marginRight: 12 },
+  input: { flex: 1, ...typography.body, color: colors.textPrimary, fontSize: 15, padding: 0 },
+  depthRow: { marginBottom: 20 },
+  depthLabel: { ...typography.label, color: colors.textTertiary, fontSize: 9, marginBottom: 8 },
+  depthOptions: { flexDirection: 'row', gap: 8 },
+  depthBtn: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: colors.border, gap: 4 },
+  depthBtnActive: { borderColor: colors.goldPrimary, backgroundColor: colors.goldSubtle },
+  depthBtnText: { ...typography.label, color: colors.textTertiary, fontSize: 10 },
+  depthBtnTextActive: { color: colors.goldPrimary },
+  depthTime: { ...typography.caption, color: colors.textTertiary, fontSize: 8 },
+  processingContainer: { alignItems: 'center', paddingVertical: 30, gap: 12 },
+  statusText: { ...typography.subheading, color: colors.goldPrimary, fontSize: 12, marginTop: 8, textAlign: 'center' },
+  progressBar: { width: '80%', height: 3, backgroundColor: colors.border, borderRadius: 2, overflow: 'hidden', marginTop: 4 },
+  progressFill: { height: '100%', backgroundColor: colors.goldPrimary, borderRadius: 2 },
+  progressText: { ...typography.caption, color: colors.textTertiary, fontSize: 9 },
+  errorCard: { marginBottom: 16, borderColor: 'rgba(248, 113, 113, 0.2)' },
+  errorRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  errorText: { ...typography.body, color: colors.error, flex: 1, fontSize: 13 },
+  buttonArea: { marginBottom: 24 },
+  platforms: { alignItems: 'center', gap: 10 },
+  platformsLabel: { ...typography.label, color: colors.textTertiary, fontSize: 9 },
+  platformIcons: { flexDirection: 'row', gap: 20 },
+  resultsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  resultsLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  resultsTitle: { ...typography.label, color: colors.goldPrimary, fontSize: 13 },
+  qualityBadge: { backgroundColor: colors.goldSubtle, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(200, 168, 78, 0.2)' },
+  qualityText: { ...typography.mono, color: colors.goldPrimary, fontSize: 11 },
+  resultsActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  shareBtn: { padding: 8 },
 });
