@@ -206,6 +206,7 @@ export default function HomeScreen() {
                 <IntelligenceView
                   data={result.intelligence}
                   source={result.source}
+                  result={result}
                 />
               </>
             )}
