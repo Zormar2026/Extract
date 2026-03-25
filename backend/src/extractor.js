@@ -83,7 +83,7 @@ async function extractWithRetry(sourceData, depth, attempt = 1) {
   const intelligence = await extractIntelligence(sourceData, depth);
 
   // Quality check
-  const score = assessQuality(intelligence);
+  const score = assessQuality(intelligence, depth);
   intelligence._qualityScore = score;
 
   if (score < 7 && attempt < 3) {
@@ -94,27 +94,65 @@ async function extractWithRetry(sourceData, depth, attempt = 1) {
   return intelligence;
 }
 
-function assessQuality(intel) {
+function assessQuality(intel, depth = 'deep') {
   if (intel.raw) return 2;
-  let score = 5;
+  let score = 3;
 
-  if (intel.summary && intel.summary.length > 50) score += 1;
-  if (intel.keyInsights?.length >= 3) score += 1;
-  if (intel.typeSpecific && Object.keys(intel.typeSpecific).length >= 3) score += 1;
-  if (intel.transcript && intel.transcript.length > 100) score += 0.5;
-  if (intel.contentFormatBreakdown) score += 0.5;
-  if (intel.viralPotential) score += 0.5;
-  if (intel.emotionalTriggers?.length > 0) score += 0.5;
+  // Summary depth
+  if (intel.summary && intel.summary.length > 150) score += 1;
+  else if (intel.summary && intel.summary.length > 50) score += 0.5;
 
-  return Math.min(10, Math.round(score));
+  // Insight count
+  const insights = intel.keyInsights?.length || 0;
+  if (insights >= 8) score += 1.5;
+  else if (insights >= 5) score += 1;
+  else if (insights >= 3) score += 0.5;
+
+  // Type-specific completeness
+  const tsKeys = intel.typeSpecific ? Object.keys(intel.typeSpecific).filter(k => intel.typeSpecific[k] != null).length : 0;
+  if (tsKeys >= 8) score += 1.5;
+  else if (tsKeys >= 5) score += 1;
+  else if (tsKeys >= 3) score += 0.5;
+
+  // Individual field checks
+  if (intel.transcript && intel.transcript.length > 200) score += 0.5;
+  if (intel.contentFormatBreakdown?.hookType && intel.contentFormatBreakdown?.bodyStructure) score += 0.5;
+  if (intel.viralPotential?.score && intel.viralPotential?.explanation) score += 0.5;
+  if (intel.emotionalTriggers?.length >= 2) score += 0.5;
+  if (intel.speakerAnalysis?.tone && intel.speakerAnalysis?.credibilityScore) score += 0.5;
+  if (intel.quotes?.length >= 2) score += 0.5;
+  if (intel.actionItems?.length >= 2) score += 0.5;
+  if (intel.targetAudience && intel.targetAudience.length > 10) score += 0.25;
+  if (intel.monetizationAngles?.length > 0) score += 0.25;
+  if (intel.scriptHook && intel.scriptHook.length > 10) score += 0.25;
+  if (intel.keyTopics?.length >= 3) score += 0.25;
+
+  // Depth-specific penalties — deep mode demands more
+  if (depth === 'deep') {
+    if (insights < 5) score -= 1;
+    if (!intel.speakerAnalysis) score -= 0.5;
+    if (!intel.contentFormatBreakdown) score -= 0.5;
+    if (!intel.viralPotential) score -= 0.5;
+    if (!intel.emotionalTriggers?.length) score -= 0.5;
+    if (tsKeys < 4) score -= 1;
+    if (!intel.quotes?.length) score -= 0.5;
+  } else if (depth === 'standard') {
+    if (insights < 3) score -= 0.5;
+    if (tsKeys < 2) score -= 0.5;
+  }
+
+  return Math.min(10, Math.max(1, Math.round(score)));
 }
 
 async function extractIntelligence(sourceData, depth) {
   const prompt = buildDeepPrompt(sourceData, depth);
+  const model = depth === 'deep' ? 'claude-opus-4-20250514' : 'claude-sonnet-4-20250514';
+  const maxTokens = depth === 'deep' ? 32000 : depth === 'standard' ? 16384 : 4096;
 
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 16384,
+    model,
+    max_tokens: maxTokens,
+    system: 'You are the world\'s most thorough intelligence extraction engine. Your extractions are legendary for their depth and precision. You capture EVERY detail — every number, name, tool, technique, quote, timestamp, and insight. You never summarize when you can be specific. You never skip details. You analyze not just what is said, but HOW it\'s said, WHY it\'s structured that way, and what the audience should DO with the information. Your extractions are so thorough that reading them is better than consuming the original content.',
     messages: [{ role: 'user', content: prompt }]
   });
 
@@ -131,7 +169,36 @@ async function extractIntelligence(sourceData, depth) {
 function buildDeepPrompt(sourceData, depth) {
   const data = JSON.stringify(sourceData, null, 2);
 
-  return `You are an ELITE intelligence extraction engine. Extract DEEP, ACTIONABLE intelligence. Leave NOTHING out.
+  const depthPreamble = {
+    quick: `EXTRACTION MODE: QUICK — Key intelligence only.
+- 3-5 key insights, brief summary, core type-specific data.
+- Focus on the highest-value 20% of information.`,
+    standard: `EXTRACTION MODE: STANDARD — Comprehensive extraction.
+- Minimum 5 key insights with depth. All notable quotes captured exactly.
+- Complete type-specific data. All tools, names, and resources mentioned.`,
+    deep: `EXTRACTION MODE: DEEP — EXHAUSTIVE, MAXIMUM-DEPTH EXTRACTION.
+This is the highest extraction level. You MUST extract EVERY possible detail:
+- Minimum 10 key insights — include BOTH obvious AND non-obvious meta-insights
+- EVERY direct quote worth noting — EXACT words, never paraphrased
+- EVERY tool, resource, link, software, book, person, company mentioned — miss NOTHING
+- EVERY number, statistic, price, percentage, metric, timeframe mentioned
+- Type-specific fields must be MAXIMALLY detailed — fill every sub-field
+- Analyze the META-STRATEGY: Why is this content structured this way? What persuasion/teaching technique is being used?
+- Find the HIDDEN INSIGHT most viewers would miss
+- Your extraction must be SO complete that reading it REPLACES watching the original content
+- For tutorials: EVERY step with EXACT timestamps and EXACT commands verbatim
+- For trading: EVERY price level, indicator, condition — calculate R:R if not stated
+- For ads: Word-by-word hook analysis, EVERY persuasion layer identified and scored
+- For recipes: EVERY ingredient with EXACT quantities, ALL substitutions
+- For workouts: EVERY exercise with sets/reps/rest/weight recommendations by fitness level
+- For podcasts: EVERY insight, recommendation, book, story, and quotable moment
+- For news: EVERY person, organization, cause, effect, and downstream implication
+- For business: EVERY revenue stream, metric, tool, step, and case study detail`
+  };
+
+  return `${depthPreamble[depth] || depthPreamble.deep}
+
+You are an ELITE intelligence extraction engine. Extract DEEP, ACTIONABLE intelligence. Leave NOTHING out.
 
 SOURCE DATA:
 ${data}

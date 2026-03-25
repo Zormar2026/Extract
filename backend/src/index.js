@@ -16,8 +16,8 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'extract',
-    version: '3.0.0',
-    features: ['deep-extraction', 'content-type-detection', 'ad-intelligence', 'auto-ad-adapt', 'mm-pipeline', 'library', 'cache', 'quality-retry'],
+    version: '4.0.0',
+    features: ['opus-deep-extraction', 'depth-modes', 'content-type-detection', 'ad-intelligence', 'auto-ad-adapt', 'mm-pipeline', 'library', 'cache', 'quality-retry', 'section-share'],
     timestamp: new Date().toISOString()
   });
 });
@@ -123,5 +123,5 @@ app.delete('/library/:id', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`[Extract] v3.0 Deep Intelligence Engine running on port ${PORT}`);
+  console.log(`[Extract] v4.0 Deep Intelligence Engine (Opus) running on port ${PORT}`);
 });

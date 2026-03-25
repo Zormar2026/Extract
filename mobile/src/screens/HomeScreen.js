@@ -16,22 +16,44 @@ import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 
 const DEPTH_OPTIONS = [
-  { key: 'quick', label: 'QUICK', time: '~10s', icon: 'flash-outline' },
-  { key: 'standard', label: 'STANDARD', time: '~20s', icon: 'flash' },
-  { key: 'deep', label: 'DEEP', time: '~45s', icon: 'nuclear' },
+  { key: 'quick', label: 'QUICK', time: '~15s', icon: 'flash-outline' },
+  { key: 'standard', label: 'STANDARD', time: '~30s', icon: 'flash' },
+  { key: 'deep', label: 'DEEP (Opus)', time: '~90s', icon: 'nuclear' },
 ];
 
-const PROGRESS_STEPS = [
-  'Connecting to source...',
-  'Downloading video metadata...',
-  'Extracting transcript...',
-  'Detecting content type...',
-  'Analyzing speaker & delivery...',
-  'Extracting deep intelligence...',
-  'Scoring quality...',
-  'Generating type-specific data...',
-  'Finalizing report...',
-];
+const PROGRESS_STEPS = {
+  quick: [
+    'Connecting to source...',
+    'Downloading metadata...',
+    'Quick extraction...',
+    'Finalizing...',
+  ],
+  standard: [
+    'Connecting to source...',
+    'Downloading video metadata...',
+    'Extracting transcript...',
+    'Detecting content type...',
+    'Extracting intelligence...',
+    'Generating type-specific data...',
+    'Scoring quality...',
+    'Finalizing report...',
+  ],
+  deep: [
+    'Connecting to source...',
+    'Downloading video metadata...',
+    'Extracting full transcript...',
+    'Detecting content type...',
+    'Opus: Deep speaker & delivery analysis...',
+    'Opus: Extracting exhaustive intelligence...',
+    'Opus: Mining every quote, tool, & resource...',
+    'Opus: Deep type-specific extraction...',
+    'Opus: Analyzing meta-strategy & hidden insights...',
+    'Scoring extraction quality...',
+    'Quality check — retrying if incomplete...',
+    'Generating adaptations & scripts...',
+    'Finalizing deep intelligence report...',
+  ],
+};
 
 export default function HomeScreen() {
   const [url, setUrl] = useState('');
@@ -52,18 +74,20 @@ export default function HomeScreen() {
     ]).start();
   }, []);
 
+  const steps = PROGRESS_STEPS[depth] || PROGRESS_STEPS.deep;
+
   useEffect(() => {
     if (!loading) return;
     setProgressIdx(0);
     const interval = setInterval(() => {
       setProgressIdx(prev => {
-        if (prev < PROGRESS_STEPS.length - 1) {
-          setStatus(PROGRESS_STEPS[prev + 1]);
+        if (prev < steps.length - 1) {
+          setStatus(steps[prev + 1]);
           return prev + 1;
         }
         return prev;
       });
-    }, depth === 'quick' ? 1200 : depth === 'standard' ? 2500 : 4500);
+    }, depth === 'quick' ? 1500 : depth === 'standard' ? 2500 : 6000);
     return () => clearInterval(interval);
   }, [loading, depth]);
 
@@ -77,7 +101,7 @@ export default function HomeScreen() {
     setLoading(true);
     setError(null);
     setResult(null);
-    setStatus(PROGRESS_STEPS[0]);
+    setStatus(steps[0]);
 
     try {
       const data = await extractUrl(url.trim(), 'auto', depth);
@@ -174,10 +198,10 @@ export default function HomeScreen() {
 
                     {/* Progress bar */}
                     <View style={styles.progressBar}>
-                      <View style={[styles.progressFill, { width: `${((progressIdx + 1) / PROGRESS_STEPS.length) * 100}%` }]} />
+                      <View style={[styles.progressFill, { width: `${((progressIdx + 1) / steps.length) * 100}%` }]} />
                     </View>
                     <Text style={styles.progressText}>
-                      Step {progressIdx + 1} of {PROGRESS_STEPS.length}
+                      Step {progressIdx + 1} of {steps.length}
                     </Text>
                   </View>
                 )}

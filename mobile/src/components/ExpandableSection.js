@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, Animated, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Animated, StyleSheet, Platform, Share } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { colors } from '../theme/colors';
@@ -16,6 +16,12 @@ export function ExpandableSection({ title, icon, iconColor, children, defaultExp
     setTimeout(() => setCopied(false), 1500);
   };
 
+  const handleShare = async () => {
+    if (!copyText) return;
+    const text = typeof copyText === 'string' ? copyText : JSON.stringify(copyText, null, 2);
+    try { await Share.share({ message: `${title}\n\n${text}` }); } catch (e) {}
+  };
+
   return (
     <View style={styles.container}>
       <TouchableOpacity
@@ -28,6 +34,11 @@ export function ExpandableSection({ title, icon, iconColor, children, defaultExp
           <Text style={[styles.title, iconColor && { color: iconColor }]}>{title}</Text>
         </View>
         <View style={styles.headerRight}>
+          {copyText && (
+            <TouchableOpacity onPress={handleShare} style={styles.copyBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="share-outline" size={14} color={colors.textTertiary} />
+            </TouchableOpacity>
+          )}
           {copyText && (
             <TouchableOpacity onPress={handleCopy} style={styles.copyBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Ionicons name={copied ? 'checkmark' : 'copy-outline'} size={14} color={copied ? colors.success : colors.textTertiary} />

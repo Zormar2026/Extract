@@ -103,7 +103,8 @@ export function IntelligenceView({ data, source, result }) {
         <FadeIn delay={100}>
           <GlassCard style={s.card}>
             {intel.speakerAnalysis && (
-              <ExpandableSection title="SPEAKER ANALYSIS" icon="person" iconColor="#6DD5FA" defaultExpanded={false}>
+              <ExpandableSection title="SPEAKER ANALYSIS" icon="person" iconColor="#6DD5FA" defaultExpanded={false}
+                copyText={`Tone: ${intel.speakerAnalysis.tone}\nDelivery: ${intel.speakerAnalysis.deliveryStyle}\nCredibility: ${intel.speakerAnalysis.credibilityScore}/10 — ${intel.speakerAnalysis.credibilityReason || ''}`}>
                 <View style={s.kvRow}><Text style={s.kvLabel}>TONE</Text><Text style={s.kvValue}>{intel.speakerAnalysis.tone}</Text></View>
                 <View style={s.kvRow}><Text style={s.kvLabel}>DELIVERY</Text><Text style={s.kvValue}>{intel.speakerAnalysis.deliveryStyle}</Text></View>
                 {intel.speakerAnalysis.credibilityReason && (
@@ -112,7 +113,8 @@ export function IntelligenceView({ data, source, result }) {
               </ExpandableSection>
             )}
             {intel.contentFormatBreakdown && (
-              <ExpandableSection title="CONTENT FORMAT" icon="film" iconColor="#B388FF" defaultExpanded={false}>
+              <ExpandableSection title="CONTENT FORMAT" icon="film" iconColor="#B388FF" defaultExpanded={false}
+                copyText={`Hook: ${intel.contentFormatBreakdown.hookLength} — ${intel.contentFormatBreakdown.hookType}\nBody: ${intel.contentFormatBreakdown.bodyStructure}\nEnding: ${intel.contentFormatBreakdown.endingType}\nPacing: ${intel.contentFormatBreakdown.totalPacing}`}>
                 <View style={s.kvRow}><Text style={s.kvLabel}>HOOK</Text><Text style={s.kvValue}>{intel.contentFormatBreakdown.hookLength} — {intel.contentFormatBreakdown.hookType}</Text></View>
                 <View style={s.kvRow}><Text style={s.kvLabel}>BODY</Text><Text style={s.kvValue}>{intel.contentFormatBreakdown.bodyStructure}</Text></View>
                 <View style={s.kvRow}><Text style={s.kvLabel}>ENDING</Text><Text style={s.kvValue}>{intel.contentFormatBreakdown.endingType}</Text></View>
@@ -127,7 +129,7 @@ export function IntelligenceView({ data, source, result }) {
       {intel?.emotionalTriggers?.length > 0 && (
         <FadeIn delay={120}>
           <GlassCard style={s.card}>
-            <ExpandableSection title="EMOTIONAL TRIGGERS" icon="heart" iconColor="#FF4081" defaultExpanded={false}>
+            <ExpandableSection title="EMOTIONAL TRIGGERS" icon="heart" iconColor="#FF4081" defaultExpanded={false} copyText={intel.emotionalTriggers.join(', ')}>
               <View style={s.tagsWrap}>
                 {intel.emotionalTriggers.map((t, i) => (
                   <View key={i} style={[s.tag, { backgroundColor: '#FF408115', borderColor: '#FF408130' }]}>
@@ -151,7 +153,7 @@ export function IntelligenceView({ data, source, result }) {
       {intel?.keyTopics?.length > 0 && (
         <FadeIn delay={160}>
           <GlassCard style={s.card}>
-            <ExpandableSection title="KEY TOPICS" icon="pricetags">
+            <ExpandableSection title="KEY TOPICS" icon="pricetags" copyText={intel.keyTopics.join(', ')}>
               <View style={s.tagsWrap}>
                 {intel.keyTopics.map((t, i) => (
                   <View key={i} style={s.tag}><Text style={s.tagText}>{t}</Text></View>
@@ -256,7 +258,7 @@ export function IntelligenceView({ data, source, result }) {
       {intel?.monetizationAngles?.length > 0 && (
         <FadeIn delay={320}>
           <GlassCard style={s.card}>
-            <ExpandableSection title="MONETIZATION ANGLES" icon="cash" iconColor={colors.success} defaultExpanded={false}>
+            <ExpandableSection title="MONETIZATION ANGLES" icon="cash" iconColor={colors.success} defaultExpanded={false} copyText={intel.monetizationAngles.join('\n')}>
               {intel.monetizationAngles.map((a, i) => (
                 <View key={i} style={s.insightRow}>
                   <View style={[s.insightDot, { backgroundColor: colors.success }]} />
@@ -268,16 +270,38 @@ export function IntelligenceView({ data, source, result }) {
         </FadeIn>
       )}
 
-      {/* Ad Adaptations (auto-generated for ads) */}
+      {/* Ad Adaptations — side by side: Original | Adapted */}
       {result?.adAdaptations && (
         <FadeIn delay={340}>
           <GlassCard style={s.card} glowIntensity={0.1}>
             <ExpandableSection title="AUTO-ADAPTED ADS" icon="color-wand" iconColor="#FF4081" defaultExpanded={false}>
+              {/* Original ad summary */}
+              {intel?.typeSpecific && (
+                <View style={s.comparisonBlock}>
+                  <View style={s.comparisonHeader}>
+                    <View style={[s.comparisonDot, { backgroundColor: '#FF4081' }]} />
+                    <Text style={s.comparisonLabel}>ORIGINAL AD</Text>
+                  </View>
+                  {intel.typeSpecific.first3Seconds?.wordByWord && (
+                    <Text style={s.comparisonHook}>"{intel.typeSpecific.first3Seconds.wordByWord}"</Text>
+                  )}
+                  {intel.typeSpecific.productSold && <Text style={s.comparisonMeta}>Product: {intel.typeSpecific.productSold}</Text>}
+                  {intel.typeSpecific.ctaExactWording && <Text style={s.comparisonMeta}>CTA: "{intel.typeSpecific.ctaExactWording}"</Text>}
+                  {intel.typeSpecific.overallEffectiveness && <Text style={s.comparisonMeta}>Effectiveness: {intel.typeSpecific.overallEffectiveness}/10</Text>}
+                </View>
+              )}
+              {/* Adapted versions */}
               {Object.entries(result.adAdaptations).map(([product, adapt]) => (
-                <View key={product} style={s.adaptBlock}>
-                  <Text style={s.adaptProduct}>{product}</Text>
-                  <Text style={s.adaptHook}>"{adapt?.hook || adapt?.fullScript?.substring(0, 100) || ''}"</Text>
-                  {adapt?.fullScript && <CopyButton text={adapt.fullScript} label="COPY SCRIPT" />}
+                <View key={product} style={s.comparisonBlock}>
+                  <View style={s.comparisonHeader}>
+                    <View style={[s.comparisonDot, { backgroundColor: colors.goldPrimary }]} />
+                    <Text style={[s.comparisonLabel, { color: colors.goldPrimary }]}>ADAPTED: {product.toUpperCase()}</Text>
+                  </View>
+                  <Text style={s.adaptHook}>"{adapt?.hook || ''}"</Text>
+                  {adapt?.painPoint && <Text style={s.comparisonMeta}>Pain: {adapt.painPoint}</Text>}
+                  {adapt?.cta && <Text style={s.comparisonMeta}>CTA: "{adapt.cta}"</Text>}
+                  {adapt?.whyItWillWork && <Text style={s.comparisonReason}>{adapt.whyItWillWork}</Text>}
+                  {adapt?.fullScript && <CopyButton text={adapt.fullScript} label="COPY FULL SCRIPT" />}
                 </View>
               ))}
             </ExpandableSection>
@@ -338,6 +362,13 @@ const s = StyleSheet.create({
   actionText: { ...typography.body, color: colors.textPrimary, flex: 1, fontSize: 14, lineHeight: 20 },
   transcriptText: { ...typography.body, color: colors.textSecondary, fontSize: 13, lineHeight: 22 },
   rawText: { ...typography.body, color: colors.textSecondary, lineHeight: 22 },
+  comparisonBlock: { marginBottom: 14, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.border, paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: 'rgba(255, 64, 129, 0.2)' },
+  comparisonHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  comparisonDot: { width: 8, height: 8, borderRadius: 4 },
+  comparisonLabel: { ...typography.label, color: '#FF4081', fontSize: 10 },
+  comparisonHook: { ...typography.body, color: '#FF4081', fontStyle: 'italic', fontSize: 14, lineHeight: 20, marginBottom: 6 },
+  comparisonMeta: { ...typography.caption, color: colors.textSecondary, fontSize: 11, marginBottom: 3, lineHeight: 16 },
+  comparisonReason: { ...typography.body, color: colors.textTertiary, fontSize: 11, fontStyle: 'italic', marginTop: 4, marginBottom: 4, lineHeight: 16 },
   adaptBlock: { marginBottom: 14, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
   adaptProduct: { ...typography.subheading, color: '#FF4081', fontSize: 13, marginBottom: 4 },
   adaptHook: { ...typography.body, color: colors.textPrimary, fontStyle: 'italic', fontSize: 13, lineHeight: 18, marginBottom: 4 },
