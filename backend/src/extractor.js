@@ -1,5 +1,6 @@
 const Anthropic = require('@anthropic-ai/sdk');
 const { getVideoInfo, getTranscript } = require('./youtube');
+const { getTikTokData } = require('./tiktok');
 const cache = require('./cache');
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -31,6 +32,8 @@ async function extractFromUrl(url, type = 'auto', depth = 'deep') {
 
   if (platformType === 'youtube') {
     sourceData = await processYouTube(url);
+  } else if (platformType === 'tiktok') {
+    sourceData = await processTikTok(url);
   } else {
     sourceData = { url, type: platformType, note: 'Non-YouTube extraction uses URL metadata' };
   }
@@ -76,6 +79,26 @@ async function processYouTube(url) {
     views: info.views,
     description: info.description,
     transcript
+  };
+}
+
+async function processTikTok(url) {
+  const data = await getTikTokData(url);
+  return {
+    title: data.title,
+    author: data.author,
+    authorUrl: data.authorUrl,
+    duration: data.duration,
+    views: data.views,
+    likes: data.likes,
+    comments: data.comments,
+    shares: data.shares,
+    saves: data.saves,
+    description: data.description,
+    transcript: data.transcript,
+    thumbnail: data.thumbnail,
+    uploadDate: data.uploadDate,
+    videoId: data.videoId
   };
 }
 
@@ -149,12 +172,13 @@ async function extractIntelligence(sourceData, depth) {
   const model = depth === 'deep' ? 'claude-opus-4-20250514' : 'claude-sonnet-4-20250514';
   const maxTokens = depth === 'deep' ? 32000 : depth === 'standard' ? 16384 : 4096;
 
-  const response = await anthropic.messages.create({
+  const stream = anthropic.messages.stream({
     model,
     max_tokens: maxTokens,
     system: 'You are the world\'s most thorough intelligence extraction engine. Your extractions are legendary for their depth and precision. You capture EVERY detail — every number, name, tool, technique, quote, timestamp, and insight. You never summarize when you can be specific. You never skip details. You analyze not just what is said, but HOW it\'s said, WHY it\'s structured that way, and what the audience should DO with the information. Your extractions are so thorough that reading them is better than consuming the original content.',
     messages: [{ role: 'user', content: prompt }]
   });
+  const response = await stream.finalMessage();
 
   const text = response.content[0].text;
 
@@ -433,7 +457,7 @@ CRITICAL RULES:
 }
 
 async function generateMentorMillionaireScript(intelligence) {
-  const response = await anthropic.messages.create({
+  const stream = anthropic.messages.stream({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 4096,
     messages: [{
@@ -457,6 +481,7 @@ Generate a complete content package. Return JSON:
 Return ONLY the JSON object.`
     }]
   });
+  const response = await stream.finalMessage();
 
   try {
     const text = response.content[0].text;
@@ -478,7 +503,7 @@ async function adaptAdForProduct(extraction, productName) {
   const productDesc = productDescriptions[productName] || `Product called "${productName}"`;
   const adIntel = extraction.intelligence?.typeSpecific || extraction.intelligence;
 
-  const response = await anthropic.messages.create({
+  const stream = anthropic.messages.stream({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 4096,
     messages: [{
@@ -514,6 +539,7 @@ Return JSON:
 Return ONLY the JSON object.`
     }]
   });
+  const response = await stream.finalMessage();
 
   try {
     const text = response.content[0].text;

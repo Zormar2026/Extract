@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0A0A0F">
+<title>Extract — Video Intelligence</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+--bg:#0A0A0F;--bg-elevated:#111118;--bg-card:#16161F;--bg-card-hover:#1C1C28;--bg-input:#0E0E15;
+--gold:#C8A84E;--gold-light:#D4AF37;--gold-bright:#E8C84A;--gold-dim:#8B7635;
+--gold-subtle:rgba(200,168,78,0.12);--gold-glow:rgba(200,168,78,0.25);
+--text:#F0ECE2;--text-secondary:#9A9490;--text-tertiary:#5A5652;
+--border:rgba(200,168,78,0.08);--border-active:rgba(200,168,78,0.3);
+--success:#4ADE80;--error:#F87171;--warning:#FBBF24;
+}
+html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,sans-serif;min-height:100vh;min-height:100dvh;overflow-x:hidden}
+body{padding-bottom:env(safe-area-inset-bottom,0)}
+
+.app{max-width:680px;margin:0 auto;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
+
+/* Header */
+.header{padding:20px 20px 0;text-align:center}
+.header h1{font-size:28px;font-weight:700;letter-spacing:1px;background:linear-gradient(135deg,var(--gold),var(--gold-bright),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.header p{color:var(--text-secondary);font-size:13px;margin-top:4px;letter-spacing:0.5px}
+
+/* Tab Bar */
+.tabs{display:flex;margin:16px 20px 0;background:var(--bg-elevated);border-radius:12px;padding:3px;border:1px solid var(--border)}
+.tab{flex:1;padding:10px;text-align:center;font-size:12px;font-weight:600;letter-spacing:0.5px;color:var(--text-tertiary);border-radius:10px;cursor:pointer;transition:all .2s}
+.tab.active{background:var(--gold-subtle);color:var(--gold);border:1px solid var(--border-active)}
+.tab:not(.active){border:1px solid transparent}
+.tab .tab-lock{font-size:10px;margin-left:2px;opacity:0.6}
+
+/* Content Area */
+.content{flex:1;padding:0 20px 20px;overflow-y:auto}
+.panel{display:none}.panel.active{display:block}
+
+/* Free Tier Counter */
+.tier-counter{margin-top:16px;padding:10px 14px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;display:flex;align-items:center;justify-content:space-between;font-size:12px}
+.tier-counter .count{color:var(--text-secondary)}
+.tier-counter .count span{color:var(--gold);font-weight:700}
+.tier-counter .upgrade-link{color:var(--gold);font-weight:600;cursor:pointer;text-decoration:none}
+.tier-counter.hidden{display:none}
+
+/* Extract Panel */
+.input-group{margin-top:20px}
+.input-group label{display:block;font-size:12px;color:var(--text-secondary);margin-bottom:8px;letter-spacing:0.5px;text-transform:uppercase;font-weight:600}
+.url-wrapper{position:relative}
+.url-input{width:100%;padding:14px 40px 14px 16px;background:var(--bg-input);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:16px;outline:none;transition:border .2s;-webkit-appearance:none}
+.url-input:focus{border-color:var(--border-active);box-shadow:0 0 0 3px var(--gold-subtle)}
+.url-input::placeholder{color:var(--text-tertiary)}
+.url-clear{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.08);border:none;color:var(--text-tertiary);font-size:16px;cursor:pointer;display:none;align-items:center;justify-content:center;-webkit-appearance:none;line-height:1}
+.url-clear.visible{display:flex}
+
+/* Depth Selector */
+.depth-selector{display:flex;gap:8px;margin-top:16px}
+.depth-btn{flex:1;padding:12px 8px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:12px;color:var(--text-secondary);text-align:center;cursor:pointer;transition:all .2s;-webkit-appearance:none;font-size:inherit;font-family:inherit;position:relative}
+.depth-btn .label{font-size:13px;font-weight:600;display:block}
+.depth-btn .time{font-size:11px;color:var(--text-tertiary);margin-top:2px;display:block}
+.depth-btn.active{background:var(--gold-subtle);border-color:var(--border-active);color:var(--gold)}
+.depth-btn.active .time{color:var(--gold-dim)}
+.depth-btn .pro-badge{position:absolute;top:-6px;right:-6px;font-size:9px;padding:1px 5px;background:var(--gold);color:var(--bg);border-radius:4px;font-weight:700;display:none}
+.depth-btn.locked .pro-badge{display:block}
+
+/* Extract Button */
+.extract-btn{width:100%;margin-top:20px;padding:16px;background:linear-gradient(135deg,var(--gold),var(--gold-bright));border:none;border-radius:14px;color:var(--bg);font-size:16px;font-weight:700;letter-spacing:0.5px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:10px}
+.extract-btn:active{transform:scale(0.98);opacity:0.9}
+.extract-btn:disabled{opacity:0.6;cursor:not-allowed;transform:none}
+.extract-btn .shimmer{position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent);animation:shimmer 2s infinite}
+@keyframes shimmer{to{left:100%}}
+.btn-spinner{width:18px;height:18px;border:2.5px solid rgba(10,10,15,0.3);border-top-color:var(--bg);border-radius:50%;animation:spin .6s linear infinite;display:none}
+.extract-btn.loading .btn-spinner{display:block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Loading State */
+.loading{display:none;margin-top:24px;text-align:center}
+.loading.active{display:block}
+.orb-container{width:80px;height:80px;margin:0 auto 20px;position:relative}
+.orb{width:80px;height:80px;border-radius:50%;background:radial-gradient(circle at 35% 35%,var(--gold-bright),var(--gold),var(--gold-dim));animation:pulse 2s ease-in-out infinite;box-shadow:0 0 40px var(--gold-glow),0 0 80px rgba(200,168,78,0.1)}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:0.85}}
+.loading-title{font-size:16px;font-weight:600;color:var(--text);margin-bottom:16px}
+.progress-steps{text-align:left;max-width:320px;margin:0 auto}
+.step{padding:6px 0;font-size:13px;color:var(--text-tertiary);display:flex;align-items:center;gap:8px;transition:color .3s}
+.step.active{color:var(--gold)}
+.step.done{color:var(--success)}
+.step-icon{width:18px;text-align:center;flex-shrink:0}
+
+/* Results */
+.results{display:none;margin-top:20px}
+.results.active{display:block}
+.result-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.result-header h2{font-size:18px;font-weight:700}
+.content-badge{display:inline-flex;align-items:center;padding:4px 10px;background:var(--gold-subtle);border:1px solid var(--border-active);border-radius:8px;font-size:12px;color:var(--gold);font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
+.quality-score{font-size:12px;color:var(--text-secondary);margin-top:4px}
+.quality-score span{color:var(--gold);font-weight:700}
+.source-info{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px}
+.source-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px}
+.source-meta{font-size:12px;color:var(--text-secondary)}
+
+/* Expandable Cards */
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;margin-bottom:10px;overflow:hidden;transition:border-color .2s}
+.card:hover{border-color:rgba(200,168,78,0.15)}
+.card-header{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;-webkit-user-select:none;user-select:none}
+.card-title{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+.card-title .icon{font-size:16px}
+.card-actions{display:flex;align-items:center;gap:8px}
+.copy-btn{padding:6px 10px;background:var(--gold-subtle);border:1px solid var(--border-active);border-radius:8px;color:var(--gold);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;-webkit-appearance:none;font-family:inherit}
+.copy-btn:active{transform:scale(0.95)}
+.copy-btn.copied{background:rgba(74,222,128,0.15);border-color:rgba(74,222,128,0.3);color:var(--success)}
+.chevron{color:var(--text-tertiary);transition:transform .2s;font-size:14px}
+.card.open .chevron{transform:rotate(180deg)}
+.card-body{padding:0 16px;max-height:0;overflow:hidden;transition:max-height .3s ease,padding .3s ease}
+.card.open .card-body{max-height:5000px;padding:0 16px 16px}
+.card-content{font-size:14px;line-height:1.6;color:var(--text-secondary)}
+.card-content p{margin-bottom:8px}
+.card-content ul{padding-left:18px;margin-bottom:8px}
+.card-content li{margin-bottom:4px}
+.card-content .quote{border-left:3px solid var(--gold);padding:8px 12px;margin:8px 0;background:var(--gold-subtle);border-radius:0 8px 8px 0;font-style:italic}
+.card-content .tag{display:inline-block;padding:3px 8px;background:var(--gold-subtle);border-radius:6px;font-size:12px;color:var(--gold);margin:2px 4px 2px 0}
+.card-content .metric{color:var(--gold);font-weight:700}
+.card-content .sub-label{font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-tertiary);margin-top:12px;margin-bottom:4px;font-weight:600}
+
+/* Type-Specific Step Cards */
+.ts-step{background:var(--bg-elevated);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
+.ts-step-header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.ts-step-badge{width:28px;height:28px;border-radius:8px;background:var(--gold);color:var(--bg);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+.ts-step-instruction{font-size:15px;font-weight:500;color:var(--text);line-height:1.4}
+.ts-step-timestamp{font-size:12px;color:var(--gold-dim);font-weight:600;margin-top:4px}
+.ts-step-command{margin-top:8px;padding:10px 12px;background:#0D0D12;border:1px solid rgba(200,168,78,0.12);border-radius:8px;font-family:'SF Mono',Monaco,Consolas,monospace;font-size:13px;color:var(--gold-bright);position:relative;word-break:break-all}
+.ts-step-command .cmd-copy{position:absolute;top:6px;right:6px;padding:3px 8px;background:var(--gold-subtle);border:1px solid var(--border-active);border-radius:6px;color:var(--gold);font-size:10px;font-weight:600;cursor:pointer;font-family:inherit}
+.ts-step-tip{margin-top:6px;font-size:13px;color:var(--text-tertiary);font-style:italic}
+.ts-kv{display:flex;gap:8px;margin-bottom:6px;font-size:13px}
+.ts-kv-label{color:var(--text-tertiary);min-width:100px;flex-shrink:0;text-transform:capitalize}
+.ts-kv-value{color:var(--text-secondary)}
+
+/* Action Buttons */
+.save-btn,.implement-btn,.reextract-btn,.new-btn{width:100%;padding:14px;border-radius:14px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit;border:none}
+.save-btn{margin-top:12px;background:var(--bg-elevated);border:1px solid var(--border-active);color:var(--gold)}
+.save-btn:active,.implement-btn:active,.reextract-btn:active,.new-btn:active{transform:scale(0.98)}
+.save-btn.saved{background:rgba(74,222,128,0.1);border-color:rgba(74,222,128,0.3);color:var(--success)}
+.implement-btn{margin-top:8px;background:linear-gradient(135deg,var(--gold),var(--gold-bright));color:var(--bg)}
+.reextract-btn{margin-top:8px;background:var(--bg-elevated);border:1px solid var(--border-active);color:var(--gold)}
+.new-btn{margin-top:8px;background:transparent;border:1px solid var(--border);color:var(--text-secondary)}
+
+/* Notes */
+.notes-group{margin-top:16px;background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:16px}
+.notes-group label{display:block;font-size:12px;color:var(--text-secondary);margin-bottom:8px;letter-spacing:0.5px;text-transform:uppercase;font-weight:600}
+.notes-textarea{width:100%;min-height:80px;padding:12px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;resize:vertical;outline:none;transition:border .2s}
+.notes-textarea:focus{border-color:var(--border-active)}
+.notes-actions{display:flex;justify-content:flex-end;margin-top:8px}
+.notes-save{padding:8px 16px;background:var(--gold-subtle);border:1px solid var(--border-active);border-radius:8px;color:var(--gold);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
+.notes-save:active{transform:scale(0.95)}
+.notes-save.saved{color:var(--success);border-color:rgba(74,222,128,0.3)}
+
+/* Library Panel */
+.library-empty{text-align:center;padding:60px 20px;color:var(--text-tertiary)}
+.library-empty .icon{font-size:48px;margin-bottom:16px;opacity:0.5}
+.library-empty p{font-size:14px}
+.library-item{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-top:12px;cursor:pointer;transition:all .2s}
+.library-item:active{transform:scale(0.98);border-color:var(--border-active)}
+.library-item .title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.library-item .meta{font-size:12px;color:var(--text-secondary);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.library-item .type-badge{font-size:11px;padding:2px 8px;background:var(--gold-subtle);border-radius:6px;color:var(--gold);font-weight:600;text-transform:uppercase}
+.library-item .depth-badge{font-size:11px;padding:2px 8px;background:rgba(255,255,255,0.05);border-radius:6px;color:var(--text-secondary)}
+.library-delete{float:right;padding:4px 10px;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.2);border-radius:8px;color:var(--error);font-size:11px;cursor:pointer;font-family:inherit;font-weight:600}
+
+/* ── Implement Panel ─────────────────────────── */
+.board-filters{display:flex;gap:6px;margin-top:16px}
+.board-filter{flex:1;padding:10px 6px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;text-align:center;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit;color:var(--text-tertiary)}
+.board-filter.active{border-color:var(--border-active)}
+.board-filter[data-status="not_started"].active{color:#9A9490;background:rgba(154,148,144,0.08)}
+.board-filter[data-status="in_progress"].active{color:var(--gold);background:var(--gold-subtle)}
+.board-filter[data-status="done"].active{color:var(--success);background:rgba(74,222,128,0.08)}
+.board-filter .filter-count{font-size:16px;font-weight:700;display:block;margin-bottom:2px}
+
+.project-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-top:12px;cursor:pointer;transition:all .2s}
+.project-card:active{transform:scale(0.98);border-color:var(--border-active)}
+.project-card .project-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.project-card .project-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;font-size:11px}
+.project-card .status-badge{padding:2px 8px;border-radius:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.3px}
+.status-badge.not_started{background:rgba(154,148,144,0.1);color:#9A9490}
+.status-badge.in_progress{background:var(--gold-subtle);color:var(--gold)}
+.status-badge.done{background:rgba(74,222,128,0.1);color:var(--success)}
+.project-card .project-info{font-size:12px;color:var(--text-tertiary)}
+.project-progress{height:6px;background:var(--bg-elevated);border-radius:3px;margin-top:8px;overflow:hidden}
+.project-progress-bar{height:100%;border-radius:3px;transition:width .3s;background:var(--gold)}
+.project-progress-bar.complete{background:var(--success)}
+.project-progress-text{font-size:11px;color:var(--text-tertiary);margin-top:4px;text-align:right}
+.implement-empty{text-align:center;padding:60px 20px;color:var(--text-tertiary)}
+.implement-empty .icon{font-size:48px;margin-bottom:16px;opacity:0.5}
+
+/* Project Detail */
+.project-detail{display:none;margin-top:16px}
+.project-detail.active{display:block}
+.project-detail-back{padding:8px 14px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;color:var(--text-secondary);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:16px;display:inline-flex;align-items:center;gap:6px}
+.project-detail-title{font-size:18px;font-weight:700;margin-bottom:4px}
+.project-detail-meta{font-size:12px;color:var(--text-secondary);margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap}
+.task-list{list-style:none}
+.task-item{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start;transition:all .2s;cursor:pointer}
+.task-item:active{border-color:var(--border-active)}
+.task-item.completed{opacity:0.5}
+.task-item.completed .task-instruction{text-decoration:line-through}
+.task-checkbox{width:24px;height:24px;border-radius:8px;border:2px solid var(--border-active);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:transparent;font-size:14px;transition:all .2s;margin-top:2px}
+.task-item.completed .task-checkbox{background:var(--success);border-color:var(--success);color:#000}
+.task-body{flex:1;min-width:0}
+.task-step-num{font-size:11px;color:var(--gold);font-weight:700;margin-bottom:2px}
+.task-instruction{font-size:14px;color:var(--text);line-height:1.5}
+.task-timestamp{font-size:12px;color:var(--gold-dim);font-weight:600;margin-top:4px}
+.task-command{margin-top:6px;padding:8px 10px;background:#0D0D12;border:1px solid rgba(200,168,78,0.12);border-radius:8px;font-family:'SF Mono',Monaco,Consolas,monospace;font-size:12px;color:var(--gold-bright);word-break:break-all;position:relative}
+.task-command .cmd-copy{position:absolute;top:4px;right:4px;padding:2px 6px;background:var(--gold-subtle);border:1px solid var(--border-active);border-radius:4px;color:var(--gold);font-size:10px;font-weight:600;cursor:pointer;font-family:inherit}
+.task-tip{font-size:12px;color:var(--text-tertiary);font-style:italic;margin-top:4px}
+.project-complete-btn{width:100%;margin-top:16px;padding:14px;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);border-radius:14px;color:var(--success);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+.project-delete-btn{width:100%;margin-top:8px;padding:12px;background:transparent;border:1px solid rgba(248,113,113,0.2);border-radius:14px;color:var(--error);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+
+/* ── Pricing Overlay ─────────────────────────── */
+.pricing-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(10,10,15,0.95);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
+.pricing-overlay.active{display:flex}
+.pricing-inner{max-width:600px;width:100%;text-align:center}
+.pricing-close{position:absolute;top:20px;right:20px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);border:none;color:var(--text-tertiary);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.pricing-title{font-size:24px;font-weight:700;margin-bottom:6px;background:linear-gradient(135deg,var(--gold),var(--gold-bright));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.pricing-subtitle{font-size:14px;color:var(--text-secondary);margin-bottom:24px}
+.pricing-cards{display:flex;gap:12px;flex-direction:column}
+.pricing-card{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:20px;text-align:left;transition:all .2s}
+.pricing-card.recommended{border-color:var(--gold);box-shadow:0 0 30px rgba(200,168,78,0.15)}
+.pricing-card .plan-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.pricing-card .plan-name{font-size:16px;font-weight:700}
+.pricing-card .plan-badge{font-size:10px;padding:3px 8px;background:var(--gold);color:var(--bg);border-radius:4px;font-weight:700;text-transform:uppercase}
+.pricing-card .plan-price{font-size:28px;font-weight:700;color:var(--gold);margin-bottom:4px}
+.pricing-card .plan-price span{font-size:14px;color:var(--text-tertiary);font-weight:400}
+.pricing-card .plan-desc{font-size:13px;color:var(--text-secondary);margin-bottom:14px}
+.pricing-features{list-style:none;margin-bottom:16px}
+.pricing-features li{font-size:13px;color:var(--text-secondary);padding:4px 0;display:flex;align-items:center;gap:8px}
+.pricing-features li::before{content:'';width:16px;height:16px;border-radius:50%;background:rgba(74,222,128,0.15);flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.pricing-features li.included::before{background:rgba(74,222,128,0.15)}
+.pricing-card .plan-btn{width:100%;padding:12px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;border:none;transition:all .2s}
+.pricing-card .plan-btn:active{transform:scale(0.98)}
+.plan-btn.gold{background:linear-gradient(135deg,var(--gold),var(--gold-bright));color:var(--bg)}
+.plan-btn.outline{background:transparent;border:1px solid var(--border-active);color:var(--gold)}
+.plan-btn.muted{background:var(--bg-elevated);border:1px solid var(--border);color:var(--text-tertiary);cursor:default}
+.plan-trial{font-size:11px;color:var(--gold-dim);text-align:center;margin-top:6px}
+.coming-soon{font-size:10px;padding:2px 6px;background:rgba(255,255,255,0.05);border-radius:4px;color:var(--text-tertiary);margin-left:4px}
+
+/* Error state */
+.error-msg{background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.2);border-radius:12px;padding:14px;margin-top:16px;color:var(--error);font-size:14px;display:none}
+.error-msg.active{display:block}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border-active);border-radius:4px}
+
+/* Responsive */
+@media(max-width:400px){
+.header h1{font-size:24px}
+.depth-btn .label{font-size:12px}
+.tab{font-size:11px;padding:8px 4px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>EXTRACT</h1>
+    <p>Video Intelligence Platform</p>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="extract" onclick="switchTab('extract')">EXTRACT</div>
+    <div class="tab" data-tab="implement" onclick="switchTab('implement')">IMPLEMENT<span class="tab-lock" id="implement-lock"></span></div>
+    <div class="tab" data-tab="library" onclick="switchTab('library')">LIBRARY<span class="tab-lock" id="library-lock"></span></div>
+  </div>
+
+  <div class="content">
+    <!-- Extract Panel -->
+    <div id="extract-panel" class="panel active">
+      <div class="tier-counter" id="tier-counter">
+        <span class="count"><span id="tier-used">0</span> of <span id="tier-limit">3</span> free extractions used</span>
+        <a class="upgrade-link" onclick="showPricing()">Upgrade</a>
+      </div>
+
+      <div class="input-group">
+        <label>Video URL</label>
+        <div class="url-wrapper">
+          <input class="url-input" id="url-input" type="url" placeholder="YouTube, TikTok, or Instagram URL" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+          <button class="url-clear" id="url-clear" onclick="clearUrl()" type="button">&times;</button>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label>Extraction Depth</label>
+        <div class="depth-selector">
+          <button class="depth-btn active" data-depth="quick" onclick="selectDepth('quick')">
+            <span class="label">QUICK</span>
+            <span class="time">~15 sec</span>
+          </button>
+          <button class="depth-btn" data-depth="standard" onclick="selectDepth('standard')">
+            <span class="label">STANDARD</span>
+            <span class="time">~30 sec</span>
+            <span class="pro-badge">PRO</span>
+          </button>
+          <button class="depth-btn" data-depth="deep" onclick="selectDepth('deep')">
+            <span class="label">DEEP</span>
+            <span class="time">Opus ~90s</span>
+            <span class="pro-badge">PRO</span>
+          </button>
+        </div>
+      </div>
+
+      <button class="extract-btn" id="extract-btn" onclick="startExtraction()">
+        <span class="shimmer"></span>
+        <span class="btn-spinner"></span>
+        <span class="btn-text">Extract Intelligence</span>
+      </button>
+
+      <div class="error-msg" id="error-msg"></div>
+
+      <!-- Loading -->
+      <div class="loading" id="loading">
+        <div class="orb-container"><div class="orb"></div></div>
+        <div class="loading-title" id="loading-title">Initializing...</div>
+        <div class="progress-steps" id="progress-steps"></div>
+      </div>
+
+      <!-- Results -->
+      <div class="results" id="results"></div>
+    </div>
+
+    <!-- Implement Panel -->
+    <div id="implement-panel" class="panel">
+      <div id="implement-board">
+        <div class="board-filters" id="board-filters">
+          <button class="board-filter active" data-status="all" onclick="filterProjects('all')">
+            <span class="filter-count" id="count-all">0</span>All
+          </button>
+          <button class="board-filter" data-status="not_started" onclick="filterProjects('not_started')">
+            <span class="filter-count" id="count-not_started">0</span>Not Started
+          </button>
+          <button class="board-filter" data-status="in_progress" onclick="filterProjects('in_progress')">
+            <span class="filter-count" id="count-in_progress">0</span>In Progress
+          </button>
+          <button class="board-filter" data-status="done" onclick="filterProjects('done')">
+            <span class="filter-count" id="count-done">0</span>Done
+          </button>
+        </div>
+        <div id="projects-list"></div>
+      </div>
+
+      <div class="project-detail" id="project-detail"></div>
+    </div>
+
+    <!-- Library Panel -->
+    <div id="library-panel" class="panel">
+      <div id="library-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Pricing Overlay -->
+<div class="pricing-overlay" id="pricing-overlay">
+  <button class="pricing-close" onclick="hidePricing()">&times;</button>
+  <div class="pricing-inner">
+    <div class="pricing-title">Unlock Full Power</div>
+    <div class="pricing-subtitle">Choose the plan that fits your workflow</div>
+    <div class="pricing-cards">
+      <div class="pricing-card">
+        <div class="plan-header"><span class="plan-name">Free</span></div>
+        <div class="plan-price">$0<span>/forever</span></div>
+        <div class="plan-desc">Get started with basic extraction</div>
+        <ul class="pricing-features">
+          <li class="included">3 lifetime extractions</li>
+          <li class="included">Quick mode only</li>
+        </ul>
+        <button class="plan-btn muted">Current Plan</button>
+      </div>
+      <div class="pricing-card recommended">
+        <div class="plan-header"><span class="plan-name">Pro</span><span class="plan-badge">Recommended</span></div>
+        <div class="plan-price">$7.99<span>/month</span></div>
+        <div class="plan-desc">Everything you need for deep intelligence</div>
+        <ul class="pricing-features">
+          <li class="included">Unlimited extractions</li>
+          <li class="included">Quick + Standard + Deep (Opus)</li>
+          <li class="included">Full Library with history</li>
+          <li class="included">Implement tab — project board</li>
+          <li class="included">Ad Intelligence</li>
+        </ul>
+        <button class="plan-btn gold" onclick="startCheckout('pro')">Start 14-Day Free Trial</button>
+        <div class="plan-trial">No charge for 14 days. Cancel anytime.</div>
+      </div>
+      <div class="pricing-card">
+        <div class="plan-header"><span class="plan-name">Business</span></div>
+        <div class="plan-price">$19.99<span>/month</span></div>
+        <div class="plan-desc">For teams and power users</div>
+        <ul class="pricing-features">
+          <li class="included">Everything in Pro</li>
+          <li class="included">Custom product profiles</li>
+          <li class="included">Auto ad adaptations with your products</li>
+          <li class="included">Priority processing</li>
+          <li class="included">Team sharing <span class="coming-soon">Coming Soon</span></li>
+        </ul>
+        <button class="plan-btn outline" onclick="startCheckout('business')">Get Business</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = window.location.origin;
+let currentDepth = 'quick';
+let currentResult = null;
+let currentLibraryId = null;
+let userTier = 'free';
+let extractionsUsed = 0;
+let currentBoardFilter = 'all';
+let currentProjectId = null;
+
+// ── Init ──────────────────────────────────────
+loadSubscription();
+
+async function loadSubscription() {
+  try {
+    const res = await fetch(API + '/subscription');
+    const data = await res.json();
+    userTier = data.tier || 'free';
+    extractionsUsed = data.used || 0;
+    updateTierUI();
+  } catch (e) {}
+}
+
+function updateTierUI() {
+  const counter = document.getElementById('tier-counter');
+  const implLock = document.getElementById('implement-lock');
+  const libLock = document.getElementById('library-lock');
+
+  if (userTier === 'pro' || userTier === 'business') {
+    counter.classList.add('hidden');
+    implLock.textContent = '';
+    libLock.textContent = '';
+    // Unlock all depth buttons
+    document.querySelectorAll('.depth-btn').forEach(b => b.classList.remove('locked'));
+    // Default to deep for pro/business
+    if (currentDepth === 'quick') selectDepth('deep');
+  } else {
+    counter.classList.remove('hidden');
+    document.getElementById('tier-used').textContent = extractionsUsed;
+    implLock.textContent = ' \uD83D\uDD12';
+    libLock.textContent = ' \uD83D\uDD12';
+    // Lock standard/deep
+    document.querySelectorAll('.depth-btn').forEach(b => {
+      if (b.dataset.depth !== 'quick') b.classList.add('locked');
+    });
+  }
+}
+
+// ── Tab Switching ─────────────────────────────
+function switchTab(tab) {
+  if ((tab === 'library' || tab === 'implement') && userTier === 'free') {
+    showPricing();
+    return;
+  }
+
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(tab + '-panel').classList.add('active');
+  if (tab === 'library') loadLibrary();
+  if (tab === 'implement') loadProjects();
+}
+
+// ── Pricing ───────────────────────────────────
+function showPricing() {
+  document.getElementById('pricing-overlay').classList.add('active');
+}
+function hidePricing() {
+  document.getElementById('pricing-overlay').classList.remove('active');
+}
+
+async function startCheckout(tier) {
+  try {
+    const res = await fetch(API + '/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tier })
+    });
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      alert(data.error || 'Billing coming soon!');
+    }
+  } catch (e) {
+    alert('Billing is being set up — check back soon!');
+  }
+}
+
+// ── Depth Selector ────────────────────────────
+function selectDepth(d) {
+  if ((d === 'standard' || d === 'deep') && userTier === 'free') {
+    showPricing();
+    return;
+  }
+  currentDepth = d;
+  document.querySelectorAll('.depth-btn').forEach(b => b.classList.toggle('active', b.dataset.depth === d));
+}
+
+// ── Extraction ────────────────────────────────
+const STEPS = {
+  quick: ['Connecting to server', 'Fetching metadata', 'Quick analysis', 'Formatting results'],
+  standard: ['Connecting to server', 'Fetching metadata', 'Extracting transcript', 'Detecting content type', 'Analyzing with Sonnet', 'Extracting insights', 'Formatting results'],
+  deep: ['Connecting to server', 'Fetching metadata', 'Extracting transcript', 'Detecting content type', 'Opus: Speaker analysis', 'Opus: Exhaustive intelligence', 'Mining quotes & tools', 'Type-specific extraction', 'Meta-strategy analysis', 'Quality scoring', 'Retry if needed', 'Generating adaptations', 'Finalizing']
+};
+
+async function startExtraction() {
+  const url = document.getElementById('url-input').value.trim();
+  if (!url) { document.getElementById('url-input').focus(); return; }
+
+  // Check free tier limit
+  if (userTier === 'free' && extractionsUsed >= 3) {
+    showPricing();
+    return;
+  }
+
+  const btn = document.getElementById('extract-btn');
+  const loading = document.getElementById('loading');
+  const results = document.getElementById('results');
+  const errorMsg = document.getElementById('error-msg');
+
+  btn.disabled = true;
+  btn.classList.add('loading');
+  btn.querySelector('.btn-text').textContent = 'Extracting...';
+  loading.classList.add('active');
+  results.classList.remove('active');
+  results.innerHTML = '';
+  errorMsg.classList.remove('active');
+
+  const steps = STEPS[currentDepth];
+  const stepsEl = document.getElementById('progress-steps');
+  stepsEl.innerHTML = steps.map((s, i) => `<div class="step" id="step-${i}"><span class="step-icon">${i === 0 ? '\u25C9' : '\u25CB'}</span>${s}</div>`).join('');
+
+  let stepIdx = 0;
+  const durations = { quick: 15000, standard: 30000, deep: 90000 };
+  const interval = durations[currentDepth] / steps.length;
+
+  const timer = setInterval(() => {
+    if (stepIdx < steps.length) {
+      const prev = document.getElementById('step-' + stepIdx);
+      if (prev) { prev.classList.remove('active'); prev.classList.add('done'); prev.querySelector('.step-icon').textContent = '\u2713'; }
+      stepIdx++;
+      if (stepIdx < steps.length) {
+        const cur = document.getElementById('step-' + stepIdx);
+        if (cur) { cur.classList.add('active'); cur.querySelector('.step-icon').textContent = '\u25C9'; }
+        document.getElementById('loading-title').textContent = steps[stepIdx] + '...';
+      }
+    }
+  }, interval);
+
+  const first = document.getElementById('step-0');
+  if (first) first.classList.add('active');
+  document.getElementById('loading-title').textContent = steps[0] + '...';
+
+  const controller = new AbortController();
+  const fetchTimeout = setTimeout(() => controller.abort(), 300000);
+  try {
+    const res = await fetch(API + '/extract', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, depth: currentDepth }),
+      signal: controller.signal
+    });
+    clearTimeout(fetchTimeout);
+    const data = await res.json();
+    clearInterval(timer);
+
+    if (res.status === 403) {
+      if (data.error === 'free_limit_reached') { showPricing(); throw new Error('Free extraction limit reached'); }
+      if (data.error === 'depth_restricted') { showPricing(); throw new Error(data.message); }
+    }
+    if (!res.ok || !data.success) throw new Error(data.error || 'Extraction failed');
+
+    // Update tier counter
+    if (data.tier) {
+      extractionsUsed = data.tier.used;
+      updateTierUI();
+    }
+
+    steps.forEach((_, i) => {
+      const el = document.getElementById('step-' + i);
+      if (el) { el.classList.remove('active'); el.classList.add('done'); el.querySelector('.step-icon').textContent = '\u2713'; }
+    });
+    document.getElementById('loading-title').textContent = 'Complete!';
+
+    setTimeout(() => {
+      loading.classList.remove('active');
+      currentResult = data;
+      currentLibraryId = null;
+      renderResults(data);
+    }, 600);
+
+  } catch (err) {
+    clearInterval(timer);
+    clearTimeout(fetchTimeout);
+    loading.classList.remove('active');
+    const msg = err.name === 'AbortError' ? 'Request timed out \u2014 try Quick or Standard depth, or try again' : err.message;
+    errorMsg.textContent = msg;
+    errorMsg.classList.add('active');
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+    btn.querySelector('.btn-text').textContent = 'Extract Intelligence';
+  }
+}
+
+// ── Render Results ────────────────────────────
+function renderResults(data, opts) {
+  opts = opts || {};
+  const r = document.getElementById('results');
+  const intel = data.intelligence || {};
+  const source = data.source || {};
+
+  let html = `<div class="result-header"><div><h2>Intelligence Report</h2><div class="quality-score">Quality: <span>${intel._qualityScore || '\u2014'}/10</span> \u00B7 ${data.depth || 'deep'} mode</div></div><div class="content-badge">${intel.contentType || 'unknown'}</div></div>`;
+
+  if (source.title) {
+    html += `<div class="source-info"><div class="source-title">${esc(source.title)}</div><div class="source-meta">${esc(source.author || '')}${source.duration ? ' \u00B7 ' + source.duration : ''}${source.views ? ' \u00B7 ' + Number(source.views).toLocaleString() + ' views' : ''}</div></div>`;
+  }
+
+  const sections = [];
+
+  if (intel.summary) sections.push({ title: 'Summary', icon: '\uD83D\uDCCB', content: `<p>${esc(intel.summary)}</p>` });
+  if (intel.keyTopics?.length) sections.push({ title: 'Key Topics', icon: '\uD83C\uDFAF', content: intel.keyTopics.map(t => `<span class="tag">${esc(t)}</span>`).join('') });
+  if (intel.keyInsights?.length) sections.push({ title: 'Key Insights', icon: '\uD83D\uDCA1', content: '<ul>' + intel.keyInsights.map(i => `<li>${esc(typeof i === 'string' ? i : i.insight || JSON.stringify(i))}</li>`).join('') + '</ul>' });
+  if (intel.quotes?.length) sections.push({ title: 'Notable Quotes', icon: '\uD83D\uDCAC', content: intel.quotes.map(q => `<div class="quote">"${esc(typeof q === 'string' ? q : q.quote || q.text || JSON.stringify(q))}"</div>`).join('') });
+  if (intel.actionItems?.length) sections.push({ title: 'Action Items', icon: '\u2705', content: '<ul>' + intel.actionItems.map(a => `<li>${esc(typeof a === 'string' ? a : a.action || JSON.stringify(a))}</li>`).join('') + '</ul>' });
+  if (intel.monetizationAngles?.length) sections.push({ title: 'Monetization Angles', icon: '\uD83D\uDCB0', content: '<ul>' + intel.monetizationAngles.map(m => `<li>${esc(typeof m === 'string' ? m : m.angle || JSON.stringify(m))}</li>`).join('') + '</ul>' });
+  if (intel.emotionalTriggers?.length) sections.push({ title: 'Emotional Triggers', icon: '\uD83E\uDDE0', content: intel.emotionalTriggers.map(t => `<span class="tag">${esc(typeof t === 'string' ? t : t.trigger || JSON.stringify(t))}</span>`).join('') });
+
+  if (intel.speakerAnalysis) {
+    const sa = intel.speakerAnalysis;
+    let c = '';
+    if (sa.tone) c += `<div class="sub-label">Tone</div><p>${esc(sa.tone)}</p>`;
+    if (sa.deliveryStyle) c += `<div class="sub-label">Delivery Style</div><p>${esc(sa.deliveryStyle)}</p>`;
+    if (sa.credibilityScore) c += `<div class="sub-label">Credibility</div><p><span class="metric">${sa.credibilityScore}/10</span>${sa.credibilityReason ? ' \u2014 ' + esc(sa.credibilityReason) : ''}</p>`;
+    if (c) sections.push({ title: 'Speaker Analysis', icon: '\uD83C\uDF99\uFE0F', content: c });
+  }
+
+  if (intel.viralPotential) {
+    const vp = intel.viralPotential;
+    let c = `<p>Score: <span class="metric">${vp.score || '\u2014'}/10</span></p>`;
+    if (vp.explanation) c += `<p>${esc(vp.explanation)}</p>`;
+    if (vp.whatMakesItShareable) c += `<div class="sub-label">What Makes It Shareable</div><p>${esc(vp.whatMakesItShareable)}</p>`;
+    sections.push({ title: 'Viral Potential', icon: '\uD83D\uDE80', content: c });
+  }
+
+  if (intel.contentFormatBreakdown) {
+    const cf = intel.contentFormatBreakdown;
+    let c = '';
+    if (cf.hookType) c += `<div class="sub-label">Hook</div><p>${esc(cf.hookType)}${cf.hookLength ? ' (' + esc(cf.hookLength) + ')' : ''}</p>`;
+    if (cf.bodyStructure) c += `<div class="sub-label">Body Structure</div><p>${esc(cf.bodyStructure)}</p>`;
+    if (cf.endingType) c += `<div class="sub-label">Ending</div><p>${esc(cf.endingType)}</p>`;
+    if (cf.totalPacing) c += `<div class="sub-label">Pacing</div><p>${esc(cf.totalPacing)}</p>`;
+    if (c) sections.push({ title: 'Content Format', icon: '\uD83C\uDFAC', content: c });
+  }
+
+  if (intel.sentiment) sections.push({ title: 'Sentiment & Audience', icon: '\uD83D\uDCCA', content: `<div class="sub-label">Sentiment</div><p>${esc(intel.sentiment)}</p>${intel.targetAudience ? '<div class="sub-label">Target Audience</div><p>' + esc(intel.targetAudience) + '</p>' : ''}` });
+  if (intel.scriptHook) sections.push({ title: 'Script Hook', icon: '\uD83E\uDE9D', content: `<p>${esc(intel.scriptHook)}</p>` });
+  if (intel.transcript) sections.push({ title: 'Full Transcript', icon: '\uD83D\uDCDD', content: `<p style="white-space:pre-wrap;font-size:13px">${esc(intel.transcript)}</p>` });
+
+  // Type-Specific Intel — smart rendering
+  if (intel.typeSpecific && Object.keys(intel.typeSpecific).length) {
+    const tsContent = renderTypeSpecific(intel.contentType, intel.typeSpecific);
+    if (tsContent) sections.push({ title: 'Type-Specific Intel', icon: '\uD83D\uDD0D', content: tsContent });
+  }
+
+  // MM Script
+  if (data.mentorMillionaire) {
+    const mm = data.mentorMillionaire;
+    let c = '';
+    if (mm.hook) c += `<div class="sub-label">Hook</div><p>${esc(mm.hook)}</p>`;
+    if (mm.body) c += `<div class="sub-label">Body</div><p>${esc(mm.body)}</p>`;
+    if (mm.cta) c += `<div class="sub-label">CTA</div><p>${esc(mm.cta)}</p>`;
+    if (mm.script) c += `<div class="sub-label">Full Script</div><p style="white-space:pre-wrap">${esc(mm.script)}</p>`;
+    if (mm.hashtags) c += `<div class="sub-label">Hashtags</div><p>${esc(Array.isArray(mm.hashtags) ? mm.hashtags.join(' ') : mm.hashtags)}</p>`;
+    if (c) sections.push({ title: 'Mentor Millionaire Script', icon: '\uD83C\uDFAC', content: c });
+  }
+
+  // Ad Adaptations
+  if (data.adAdaptations) {
+    for (const [product, ad] of Object.entries(data.adAdaptations)) {
+      if (!ad || ad.error) continue;
+      let c = '';
+      if (ad.hook) c += `<div class="sub-label">Hook</div><p>${esc(ad.hook)}</p>`;
+      if (ad.body) c += `<div class="sub-label">Body</div><p>${esc(ad.body)}</p>`;
+      if (ad.cta) c += `<div class="sub-label">CTA</div><p>${esc(ad.cta)}</p>`;
+      if (ad.fullScript) c += `<div class="sub-label">Full Script</div><p style="white-space:pre-wrap">${esc(ad.fullScript)}</p>`;
+      if (c) sections.push({ title: `Ad: ${product}`, icon: '\uD83D\uDCE2', content: c });
+    }
+  }
+
+  // Render cards
+  sections.forEach((s, i) => {
+    const id = 'card-' + i;
+    html += `<div class="card" id="${id}"><div class="card-header" onclick="toggleCard('${id}')"><span class="card-title"><span class="icon">${s.icon}</span>${esc(s.title)}</span><div class="card-actions"><button class="copy-btn" onclick="event.stopPropagation();copySection(this,'${id}')">Copy</button><span class="chevron">\u25BC</span></div></div><div class="card-body"><div class="card-content" data-raw="${btoa(unescape(encodeURIComponent(stripHtml(s.content))))}">${s.content}</div></div></div>`;
+  });
+
+  // Action buttons
+  if (opts.libraryId) {
+    html += `<div class="notes-group"><label>Personal Notes</label><textarea class="notes-textarea" id="notes-textarea" placeholder="Add your notes about this extraction...">${esc(opts.notes || '')}</textarea><div class="notes-actions"><button class="notes-save" id="notes-save-btn" onclick="saveNotes('${opts.libraryId}')">Save Notes</button></div></div>`;
+    html += `<button class="reextract-btn" onclick="reExtract()">Re-extract (Fresh Analysis)</button>`;
+    html += `<button class="new-btn" onclick="resetExtraction()">New Extraction</button>`;
+  } else {
+    html += `<button class="save-btn" id="save-btn" onclick="saveToLibrary()">Save to Library</button>`;
+    if (userTier !== 'free') {
+      html += `<button class="implement-btn" onclick="startImplementing()">Start Implementing</button>`;
+    }
+    html += `<button class="new-btn" onclick="resetExtraction()">New Extraction</button>`;
+  }
+
+  r.innerHTML = html;
+  r.classList.add('active');
+  if (sections.length) toggleCard('card-0');
+}
+
+// ── Type-Specific Smart Renderer ──────────────
+function renderTypeSpecific(contentType, ts) {
+  let html = '';
+
+  // Render steps (tutorial, business, recipe)
+  const stepsArr = ts.steps || ts.implementationPlan || ts.method;
+  if (Array.isArray(stepsArr) && stepsArr.length) {
+    stepsArr.forEach(s => {
+      const num = s.number || s.step || s.order || '';
+      const instr = s.instruction || s.action || '';
+      const time = s.timestamp || s.timeline || s.time || '';
+      const cmd = s.command || null;
+      const tip = s.tip || s.temperature || null;
+      html += `<div class="ts-step"><div class="ts-step-header"><span class="ts-step-badge">${esc(String(num))}</span><span class="ts-step-instruction">${esc(instr)}</span></div>`;
+      if (time) html += `<div class="ts-step-timestamp">${esc(time)}</div>`;
+      if (cmd) html += `<div class="ts-step-command"><span>${esc(cmd)}</span><button class="cmd-copy" onclick="event.stopPropagation();copyCmd(this,'${btoa(unescape(encodeURIComponent(cmd)))}')">Copy</button></div>`;
+      if (tip) html += `<div class="ts-step-tip">${esc(tip)}</div>`;
+      html += '</div>';
+    });
+  }
+
+  // Render exercises (workout)
+  if (ts.exercises?.length && !stepsArr) {
+    ts.exercises.forEach(ex => {
+      html += `<div class="ts-step"><div class="ts-step-header"><span class="ts-step-badge">${ex.order || ''}</span><span class="ts-step-instruction">${esc(ex.name || '')}</span></div>`;
+      const details = [];
+      if (ex.sets) details.push(`${ex.sets} sets`);
+      if (ex.reps) details.push(`${ex.reps} reps`);
+      if (ex.restTime) details.push(`Rest: ${ex.restTime}`);
+      if (details.length) html += `<div class="ts-step-timestamp">${esc(details.join(' \u00B7 '))}</div>`;
+      if (ex.muscleGroup) html += `<div class="ts-step-tip">Muscles: ${esc(ex.muscleGroup)}</div>`;
+      if (ex.formCues?.length) html += `<div class="ts-step-tip">Form: ${esc(ex.formCues.join(', '))}</div>`;
+      html += '</div>';
+    });
+  }
+
+  // Render ingredients (recipe)
+  if (ts.ingredients?.length) {
+    html += '<div class="sub-label">Ingredients</div>';
+    ts.ingredients.forEach(ing => {
+      if (typeof ing === 'string') { html += `<div class="ts-kv"><span class="ts-kv-value">${esc(ing)}</span></div>`; }
+      else { html += `<div class="ts-kv"><span class="ts-kv-label">${esc(ing.quantity || '')}</span><span class="ts-kv-value">${esc(ing.item || '')}${ing.substitution ? ' <em>(' + esc(ing.substitution) + ')</em>' : ''}</span></div>`; }
+    });
+  }
+
+  // Render tools (tutorial, business)
+  const tools = ts.toolsNeeded || ts.toolsAndResources;
+  if (Array.isArray(tools) && tools.length) {
+    html += '<div class="sub-label">Tools & Resources</div>';
+    tools.forEach(t => {
+      if (typeof t === 'string') { html += `<span class="tag">${esc(t)}</span>`; }
+      else { html += `<span class="tag">${esc(t.name || '')}${t.purpose ? ' \u2014 ' + esc(t.purpose) : ''}${t.free === true ? ' (Free)' : t.free === false ? ' (Paid)' : ''}</span>`; }
+    });
+  }
+
+  // Render remaining fields as key-value pairs
+  const handledKeys = new Set(['steps','implementationPlan','method','exercises','ingredients','toolsNeeded','toolsAndResources']);
+  for (const [k, v] of Object.entries(ts)) {
+    if (handledKeys.has(k) || v == null) continue;
+    const label = k.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase()).trim();
+
+    if (Array.isArray(v)) {
+      html += `<div class="sub-label">${esc(label)}</div>`;
+      if (v.length && typeof v[0] === 'object') {
+        // Array of objects — render each as key-value
+        v.forEach(item => {
+          if (typeof item === 'string') { html += `<p style="font-size:13px;margin-bottom:4px">${esc(item)}</p>`; }
+          else {
+            for (const [ik, iv] of Object.entries(item)) {
+              if (iv != null) html += `<div class="ts-kv"><span class="ts-kv-label">${esc(ik)}</span><span class="ts-kv-value">${esc(String(iv))}</span></div>`;
+            }
+            html += '<div style="margin-bottom:8px"></div>';
+          }
+        });
+      } else {
+        // Array of primitives
+        if (v.length <= 6) { v.forEach(item => { html += `<span class="tag">${esc(String(item))}</span>`; }); }
+        else { html += '<ul>' + v.map(item => `<li>${esc(String(item))}</li>`).join('') + '</ul>'; }
+      }
+    } else if (typeof v === 'object') {
+      html += `<div class="sub-label">${esc(label)}</div>`;
+      for (const [ok, ov] of Object.entries(v)) {
+        if (ov != null) html += `<div class="ts-kv"><span class="ts-kv-label">${esc(ok)}</span><span class="ts-kv-value">${esc(String(ov))}</span></div>`;
+      }
+    } else {
+      html += `<div class="ts-kv"><span class="ts-kv-label">${esc(label)}</span><span class="ts-kv-value">${esc(String(v))}</span></div>`;
+    }
+  }
+
+  return html;
+}
+
+function copyCmd(btn, b64) {
+  const text = decodeURIComponent(escape(atob(b64)));
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 1200);
+  });
+}
+
+// ── Card Helpers ──────────────────────────────
+function toggleCard(id) {
+  document.getElementById(id).classList.toggle('open');
+}
+
+function copySection(btn, cardId) {
+  const raw = document.querySelector('#' + cardId + ' .card-content').dataset.raw;
+  const text = decodeURIComponent(escape(atob(raw)));
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+function stripHtml(html) {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  return tmp.textContent || tmp.innerText || '';
+}
+
+// ── Save / Reset ──────────────────────────────
+async function saveToLibrary() {
+  if (!currentResult) return;
+  const btn = document.getElementById('save-btn');
+  try {
+    btn.textContent = 'Saving...';
+    const res = await fetch(API + '/library', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ extraction: currentResult })
+    });
+    const data = await res.json();
+    if (data.success) {
+      btn.textContent = 'Saved to Library \u2713';
+      btn.classList.add('saved');
+      setTimeout(() => resetExtraction(), 1000);
+    } else throw new Error('Save failed');
+  } catch (e) {
+    btn.textContent = 'Save failed \u2014 tap to retry';
+    btn.classList.remove('saved');
+  }
+}
+
+function resetExtraction() {
+  currentResult = null;
+  currentLibraryId = null;
+  document.getElementById('url-input').value = '';
+  document.getElementById('url-clear').classList.remove('visible');
+  document.getElementById('results').classList.remove('active');
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('loading').classList.remove('active');
+  document.getElementById('error-msg').classList.remove('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  document.getElementById('url-input').focus();
+}
+
+async function saveNotes(libraryId) {
+  const btn = document.getElementById('notes-save-btn');
+  const textarea = document.getElementById('notes-textarea');
+  if (!btn || !textarea) return;
+  try {
+    btn.textContent = 'Saving...';
+    const res = await fetch(API + '/library/' + libraryId, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes: textarea.value })
+    });
+    const data = await res.json();
+    if (data.success) {
+      btn.textContent = 'Saved!';
+      btn.classList.add('saved');
+      setTimeout(() => { btn.textContent = 'Save Notes'; btn.classList.remove('saved'); }, 1500);
+    }
+  } catch (e) {
+    btn.textContent = 'Failed \u2014 retry';
+  }
+}
+
+function reExtract() {
+  const url = document.getElementById('url-input').value.trim();
+  if (!url) return;
+  currentLibraryId = null;
+  startExtraction();
+}
+
+// ── Start Implementing ────────────────────────
+async function startImplementing() {
+  if (!currentResult) return;
+  try {
+    const res = await fetch(API + '/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ extraction: currentResult })
+    });
+    const data = await res.json();
+    if (data.success) {
+      switchTab('implement');
+      setTimeout(() => viewProject(data.project.id), 300);
+    }
+  } catch (e) {
+    alert('Failed to create project');
+  }
+}
+
+// ── Library ───────────────────────────────────
+async function loadLibrary() {
+  const list = document.getElementById('library-list');
+  list.innerHTML = '<p style="text-align:center;color:var(--text-tertiary);padding:40px 0">Loading...</p>';
+
+  try {
+    const res = await fetch(API + '/library');
+    const data = await res.json();
+
+    if (!data.items?.length) {
+      list.innerHTML = '<div class="library-empty"><div class="icon">\uD83D\uDCDA</div><p>No extractions saved yet.<br>Extract a video and save it here.</p></div>';
+      return;
+    }
+
+    list.innerHTML = data.items.sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt)).map(item => {
+      const date = new Date(item.savedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      return `<div class="library-item" onclick="viewLibraryItem('${item.id}')"><div style="display:flex;justify-content:space-between;align-items:start"><div class="title">${esc(item.title || item.url || 'Untitled')}</div><button class="library-delete" onclick="event.stopPropagation();deleteLibraryItem('${item.id}')">Delete</button></div><div class="meta"><span class="type-badge">${esc(item.contentType || 'unknown')}</span><span class="depth-badge">${esc(item.depth || 'deep')}</span><span>${date}</span></div></div>`;
+    }).join('');
+  } catch (e) {
+    list.innerHTML = '<div class="library-empty"><p>Failed to load library</p></div>';
+  }
+}
+
+async function viewLibraryItem(id) {
+  try {
+    const res = await fetch(API + '/library/' + id);
+    const data = await res.json();
+    if (data.success && data.item) {
+      const item = data.item;
+      const extraction = {
+        success: true,
+        intelligence: item.intelligence,
+        source: item.source || { title: item.title, url: item.url },
+        depth: item.depth || 'deep',
+        mentorMillionaire: item.mentorMillionaire,
+        adAdaptations: item.adAdaptations
+      };
+      currentResult = extraction;
+      currentLibraryId = item.id;
+      switchTab('extract');
+      document.getElementById('url-input').value = item.url || '';
+      updateClearBtn();
+      renderResults(extraction, { libraryId: item.id, notes: item.notes || '' });
+    }
+  } catch (e) { /* ignore */ }
+}
+
+async function deleteLibraryItem(id) {
+  if (!confirm('Delete this extraction?')) return;
+  try {
+    await fetch(API + '/library/' + id, { method: 'DELETE' });
+    loadLibrary();
+  } catch (e) { /* ignore */ }
+}
+
+// ── Implement — Project Board ─────────────────
+async function loadProjects() {
+  const list = document.getElementById('projects-list');
+  const detail = document.getElementById('project-detail');
+  const board = document.getElementById('implement-board');
+
+  // If viewing a project detail, don't reload board
+  if (currentProjectId) return;
+
+  detail.classList.remove('active');
+  detail.innerHTML = '';
+  board.style.display = '';
+
+  list.innerHTML = '<p style="text-align:center;color:var(--text-tertiary);padding:40px 0">Loading...</p>';
+
+  try {
+    const res = await fetch(API + '/projects');
+    const data = await res.json();
+
+    if (!data.items?.length) {
+      list.innerHTML = '<div class="implement-empty"><div class="icon">\uD83D\uDEE0\uFE0F</div><p>No projects yet.<br>Extract a video and tap "Start Implementing" to begin.</p></div>';
+      updateProjectCounts([]);
+      return;
+    }
+
+    updateProjectCounts(data.items);
+    renderProjectList(data.items);
+  } catch (e) {
+    list.innerHTML = '<div class="implement-empty"><p>Failed to load projects</p></div>';
+  }
+}
+
+function updateProjectCounts(items) {
+  const counts = { all: items.length, not_started: 0, in_progress: 0, done: 0 };
+  items.forEach(p => { if (counts[p.status] !== undefined) counts[p.status]++; });
+  for (const [k, v] of Object.entries(counts)) {
+    const el = document.getElementById('count-' + k);
+    if (el) el.textContent = v;
+  }
+}
+
+function renderProjectList(items) {
+  const list = document.getElementById('projects-list');
+  const filtered = currentBoardFilter === 'all' ? items : items.filter(p => p.status === currentBoardFilter);
+
+  if (!filtered.length) {
+    list.innerHTML = `<div class="implement-empty" style="padding:40px 0"><p>No ${currentBoardFilter.replace('_', ' ')} projects</p></div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(p => {
+    const tasksDone = p.tasks ? p.tasks.filter(t => t.completed).length : 0;
+    const tasksTotal = p.tasks ? p.tasks.length : 0;
+    const meta = [];
+    if (p.estimatedTime) meta.push(p.estimatedTime);
+    if (p.estimatedCost) meta.push(p.estimatedCost);
+    if (p.difficultyLevel) meta.push('Difficulty: ' + p.difficultyLevel + (typeof p.difficultyLevel === 'number' ? '/10' : ''));
+
+    return `<div class="project-card" onclick="viewProject('${p.id}')">
+      <div class="project-title">${esc(p.title)}</div>
+      <div class="project-meta">
+        <span class="status-badge ${p.status}">${p.status.replace('_', ' ')}</span>
+        <span class="type-badge">${esc(p.contentType)}</span>
+        ${meta.length ? '<span class="project-info">' + esc(meta.join(' \u00B7 ')) + '</span>' : ''}
+      </div>
+      <div class="project-progress"><div class="project-progress-bar${p.progress === 100 ? ' complete' : ''}" style="width:${p.progress}%"></div></div>
+      <div class="project-progress-text">${tasksDone}/${tasksTotal} tasks</div>
+    </div>`;
+  }).join('');
+}
+
+function filterProjects(status) {
+  currentBoardFilter = status;
+  document.querySelectorAll('.board-filter').forEach(b => b.classList.toggle('active', b.dataset.status === status));
+  loadProjects();
+}
+
+// ── Implement — Project Detail ────────────────
+async function viewProject(id) {
+  currentProjectId = id;
+  const board = document.getElementById('implement-board');
+  const detail = document.getElementById('project-detail');
+  board.style.display = 'none';
+
+  try {
+    const res = await fetch(API + '/projects/' + id);
+    const data = await res.json();
+    if (!data.success) throw new Error('Not found');
+    const p = data.project;
+
+    const tasksDone = p.tasks.filter(t => t.completed).length;
+    const meta = [];
+    if (p.estimatedTime) meta.push(p.estimatedTime);
+    if (p.estimatedCost) meta.push(p.estimatedCost);
+    if (p.difficultyLevel) meta.push('Difficulty: ' + p.difficultyLevel + (typeof p.difficultyLevel === 'number' ? '/10' : ''));
+
+    let html = `<button class="project-detail-back" onclick="backToBoard()">\u2190 Back to Board</button>`;
+    html += `<div class="project-detail-title">${esc(p.title)}</div>`;
+    html += `<div class="project-detail-meta"><span class="status-badge ${p.status}">${p.status.replace('_', ' ')}</span>${meta.map(m => '<span>' + esc(m) + '</span>').join('')}<span>${tasksDone}/${p.tasks.length} tasks</span></div>`;
+
+    html += `<div class="project-progress" style="margin-bottom:16px"><div class="project-progress-bar${p.progress === 100 ? ' complete' : ''}" style="width:${p.progress}%"></div></div>`;
+
+    // Tasks
+    html += '<div class="task-list">';
+    p.tasks.forEach(t => {
+      html += `<div class="task-item${t.completed ? ' completed' : ''}" onclick="toggleProjectTask('${p.id}','${t.id}')">
+        <div class="task-checkbox">${t.completed ? '\u2713' : ''}</div>
+        <div class="task-body">
+          <div class="task-step-num">Step ${t.stepNumber}</div>
+          <div class="task-instruction">${esc(t.instruction)}</div>
+          ${t.timestamp ? '<div class="task-timestamp">' + esc(t.timestamp) + '</div>' : ''}
+          ${t.command ? '<div class="task-command"><span>' + esc(t.command) + '</span><button class="cmd-copy" onclick="event.stopPropagation();copyCmd(this,\'' + btoa(unescape(encodeURIComponent(t.command))) + '\')">Copy</button></div>' : ''}
+          ${t.tip ? '<div class="task-tip">' + esc(t.tip) + '</div>' : ''}
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+
+    // Notes
+    html += `<div class="notes-group"><label>Project Notes</label><textarea class="notes-textarea" id="project-notes" placeholder="Add your notes...">${esc(p.notes || '')}</textarea><div class="notes-actions"><button class="notes-save" id="project-notes-btn" onclick="saveProjectNotes('${p.id}')">Save Notes</button></div></div>`;
+
+    if (p.progress < 100) {
+      html += `<button class="project-complete-btn" onclick="markProjectComplete('${p.id}')">Mark Project Complete</button>`;
+    }
+    html += `<button class="project-delete-btn" onclick="deleteProject('${p.id}')">Delete Project</button>`;
+
+    detail.innerHTML = html;
+    detail.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } catch (e) {
+    backToBoard();
+  }
+}
+
+async function toggleProjectTask(projectId, taskId) {
+  try {
+    const res = await fetch(API + '/projects/' + projectId + '/tasks/' + taskId, { method: 'PUT' });
+    const data = await res.json();
+    if (data.success) viewProject(projectId);
+  } catch (e) {}
+}
+
+async function saveProjectNotes(projectId) {
+  const btn = document.getElementById('project-notes-btn');
+  const textarea = document.getElementById('project-notes');
+  if (!btn || !textarea) return;
+  try {
+    btn.textContent = 'Saving...';
+    const res = await fetch(API + '/projects/' + projectId, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes: textarea.value })
+    });
+    if ((await res.json()).success) {
+      btn.textContent = 'Saved!';
+      btn.classList.add('saved');
+      setTimeout(() => { btn.textContent = 'Save Notes'; btn.classList.remove('saved'); }, 1500);
+    }
+  } catch (e) { btn.textContent = 'Failed'; }
+}
+
+async function markProjectComplete(projectId) {
+  try {
+    await fetch(API + '/projects/' + projectId, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'done' })
+    });
+    viewProject(projectId);
+  } catch (e) {}
+}
+
+async function deleteProject(id) {
+  if (!confirm('Delete this project?')) return;
+  try {
+    await fetch(API + '/projects/' + id, { method: 'DELETE' });
+    backToBoard();
+  } catch (e) {}
+}
+
+function backToBoard() {
+  currentProjectId = null;
+  document.getElementById('implement-board').style.display = '';
+  document.getElementById('project-detail').classList.remove('active');
+  document.getElementById('project-detail').innerHTML = '';
+  loadProjects();
+}
+
+// ── Utility ───────────────────────────────────
+function esc(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = String(s);
+  return d.innerHTML;
+}
+
+function clearUrl() {
+  document.getElementById('url-input').value = '';
+  document.getElementById('url-clear').classList.remove('visible');
+  document.getElementById('url-input').focus();
+}
+
+function updateClearBtn() {
+  document.getElementById('url-clear').classList.toggle('visible', document.getElementById('url-input').value.length > 0);
+}
+
+// Submit on Enter + show/hide clear button
+const urlInput = document.getElementById('url-input');
+urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') startExtraction(); });
+urlInput.addEventListener('input', updateClearBtn);
+urlInput.addEventListener('change', updateClearBtn);
+
+// Handle billing return
+if (window.location.search.includes('billing=success')) {
+  loadSubscription();
+  history.replaceState(null, '', '/');
+}
+</script>
+</body>
+</html>
